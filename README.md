@@ -36,7 +36,7 @@ and publishes it to the `gh-pages` branch. One-time setup in the repo:
 
 1. **Settings → Pages → Source: Deploy from a branch → `gh-pages` / (root)**
    (the branch appears after the first push to `main` finishes building).
-2. The app is then live at `https://<user>.github.io/euro-ride/`.
+2. The app is then live at `https://<user>.github.io/Euro-ride/`.
 
 Open that URL on your phone and **Add to Home Screen** — it installs like a
 native app and keeps working with no signal.

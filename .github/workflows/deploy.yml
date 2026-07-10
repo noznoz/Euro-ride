@@ -26,7 +26,8 @@ jobs:
 
       - run: npm run build
         env:
-          VITE_BASE: /euro-ride/
+          # Base path must match the repo name exactly (Pages URLs are case-sensitive)
+          VITE_BASE: /${{ github.event.repository.name }}/
 
       # Publish dist/ to the gh-pages branch — GitHub serves it via Pages
       # without needing the Pages-admin API the default token lacks.
