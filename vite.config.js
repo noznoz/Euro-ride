@@ -22,8 +22,8 @@ export default defineConfig({
         display: 'standalone',
         icons: [
           // Relative so they resolve correctly under any base path
-          { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'icon-512.png', sizes: '512x512', type: 'image/png' }
+          { src: 'tour-icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'tour-icon-512.png', sizes: '512x512', type: 'image/png' }
         ]
       }
     })
