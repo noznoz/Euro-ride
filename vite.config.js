@@ -17,7 +17,7 @@ export default defineConfig({
         name: 'Jeddah Chapter Euro Ride',
         short_name: 'Jeddah Chapter Euro Ride',
         description: 'Jeddah Chapter Europe Ride 2026 — itinerary, checklists, expenses and riding info',
-        theme_color: '#FF6A00',
+        theme_color: '#0a0a0a',
         background_color: '#0a0a0a',
         display: 'standalone',
         icons: [

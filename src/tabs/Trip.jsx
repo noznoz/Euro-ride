@@ -1,5 +1,6 @@
 import { trip, itinerary } from '../data/trip.js'
-import ChapterBadge from '../components/ChapterBadge.jsx'
+import tripLogo from '../assets/trip-logo.png'
+import chapterLogo from '../assets/chapter-logo.png'
 
 function daysUntil(iso) {
   const ms = new Date(iso + 'T00:00:00') - new Date()
@@ -31,14 +32,15 @@ export default function Trip() {
     <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
       {/* Hero */}
       <div style={{
-        background: 'linear-gradient(160deg, #1a1a1a 0%, #0d0d0d 100%)',
-        border: '1px solid #3a2410',
+        background: 'radial-gradient(circle at 50% 30%, #242424 0%, #0d0d0d 70%)',
+        border: '1px solid #3a2e10',
         borderRadius: 18,
         padding: '20px 18px 18px',
         textAlign: 'center',
       }}>
-        <ChapterBadge width={170} />
-        <h1 style={{ fontSize: 22, marginTop: 10, letterSpacing: 1, textTransform: 'uppercase' }}>
+        <img src={tripLogo} alt="H.O.G. Jeddah Chapter — Europe Tour Sep 2026"
+          style={{ width: 210, maxWidth: '80%', filter: 'drop-shadow(0 6px 18px rgba(0,0,0,0.8))' }} />
+        <h1 style={{ fontSize: 22, marginTop: 12, letterSpacing: 1, textTransform: 'uppercase' }}>
           {trip.subName}
         </h1>
         <div style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 2 }}>{trip.tagline}</div>
@@ -93,6 +95,9 @@ export default function Trip() {
 
       {/* Crew */}
       <div className="card">
+        <div style={{ textAlign: 'center', marginBottom: 12 }}>
+          <img src={chapterLogo} alt="H.O.G. Jeddah Chapter — Saudi Arabia" style={{ width: 190, maxWidth: '75%' }} />
+        </div>
         <h2 style={{ fontSize: 14, marginBottom: 10 }}>👥 The crew — {trip.group.size}</h2>
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
           {trip.riders.map(r => (

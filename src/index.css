@@ -1,8 +1,8 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --accent: #FF6A00;      /* Harley orange */
-  --accent-dim: #cc5500;
+  --accent: #F2B21E;      /* H.O.G. gold, sampled from the chapter artwork */
+  --accent-dim: #b8860b;
   --gold: #FFC93C;
   --green: #3ddc84;
   --bg: #0a0a0a;
