@@ -29,7 +29,7 @@ export default function BottomNav({ active, onChange }) {
               alignItems: 'center',
               justifyContent: 'center',
               gap: 2,
-              color: isActive ? 'var(--blue)' : 'var(--text-muted)',
+              color: isActive ? 'var(--accent)' : 'var(--text-muted)',
               transition: 'color 0.15s',
               position: 'relative',
             }}
@@ -38,7 +38,7 @@ export default function BottomNav({ active, onChange }) {
               <span style={{
                 position: 'absolute',
                 top: 0, left: '15%', right: '15%', height: 2,
-                background: 'var(--blue)',
+                background: 'var(--accent)',
                 borderRadius: '0 0 2px 2px',
               }} />
             )}

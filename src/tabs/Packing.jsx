@@ -60,14 +60,14 @@ export default function Packing() {
       <div className="card" style={{ padding: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 8 }}>
           <span>{done} / {all.length} packed</span>
-          <span style={{ color: pct === 100 ? 'var(--green)' : 'var(--blue)', fontWeight: 700 }}>
+          <span style={{ color: pct === 100 ? 'var(--green)' : 'var(--accent)', fontWeight: 700 }}>
             {pct === 100 ? 'Ready to ride! 🏍️' : `${pct}%`}
           </span>
         </div>
         <div style={{ height: 6, background: 'var(--surface)', borderRadius: 3, overflow: 'hidden' }}>
           <div style={{
             width: `${pct}%`, height: '100%',
-            background: pct === 100 ? 'var(--green)' : 'var(--blue)',
+            background: pct === 100 ? 'var(--green)' : 'var(--accent)',
             transition: 'width 0.3s',
           }} />
         </div>
@@ -108,14 +108,14 @@ export default function Packing() {
                 placeholder="New item…"
               />
               <button onClick={() => add(gi)} style={{
-                background: 'var(--blue)', color: '#0a0a0a', fontWeight: 700,
+                background: 'var(--accent)', color: '#0a0a0a', fontWeight: 700,
                 borderRadius: 10, padding: '0 16px', fontSize: 14,
               }}>Add</button>
             </div>
           ) : (
             <button
               onClick={() => { setAdding(g.group); setDraft('') }}
-              style={{ color: 'var(--blue)', fontSize: 13, marginTop: 6 }}
+              style={{ color: 'var(--accent)', fontSize: 13, marginTop: 6 }}
             >+ Add item</button>
           )}
         </div>

@@ -35,10 +35,11 @@ export default function Route() {
       {itinerary.map(d => {
         const expanded = open === d.day
         const today = isToday(d.date)
+        const isRide = d.type === 'ride'
         return (
           <div key={d.day} className="card" style={{
             padding: 0, overflow: 'hidden',
-            borderColor: today ? 'var(--green)' : expanded ? 'var(--blue)' : 'var(--border)',
+            borderColor: today ? 'var(--green)' : expanded ? 'var(--accent)' : 'var(--border)',
           }}>
             <button
               onClick={() => setOpen(expanded ? null : d.day)}
@@ -46,16 +47,17 @@ export default function Route() {
             >
               <div style={{
                 width: 38, height: 38, borderRadius: 10, flexShrink: 0,
-                background: today ? 'var(--green)' : 'var(--blue)',
-                color: '#0a0a0a', fontWeight: 800, fontSize: 16,
+                background: today ? 'var(--green)' : isRide ? 'var(--accent)' : 'var(--surface)',
+                border: isRide || today ? 'none' : '1px solid var(--border)',
+                color: '#0a0a0a', fontWeight: 800, fontSize: isRide ? 15 : 17,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>{d.day}</div>
+              }}>{isRide ? `R${d.rideDay}` : d.tag}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14, fontWeight: 700 }}>
                   {d.title} {today && <span style={{ color: 'var(--green)', fontSize: 11 }}>• TODAY</span>}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                  {fmtDate(d.date)} · {d.km} km · {d.rideTime}
+                  {fmtDate(d.date)}{isRide ? ` · ${d.km} km · ${d.rideTime}` : ''}
                 </div>
               </div>
               <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{expanded ? '▲' : '▼'}</span>
@@ -64,17 +66,19 @@ export default function Route() {
             {expanded && (
               <div style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {/* Route stops */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', fontSize: 13 }}>
-                  {d.route.map((stop, i) => (
-                    <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      {i > 0 && <span style={{ color: 'var(--blue)' }}>→</span>}
-                      <span style={{
-                        background: 'var(--surface)', border: '1px solid var(--border)',
-                        borderRadius: 8, padding: '3px 8px',
-                      }}>{stop}</span>
-                    </span>
-                  ))}
-                </div>
+                {isRide && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', fontSize: 13 }}>
+                    {d.route.map((stop, i) => (
+                      <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {i > 0 && <span style={{ color: 'var(--accent)' }}>→</span>}
+                        <span style={{
+                          background: 'var(--surface)', border: '1px solid var(--border)',
+                          borderRadius: 8, padding: '3px 8px',
+                        }}>{stop}</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
 
                 <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {d.highlights.map((h, i) => (
@@ -90,17 +94,19 @@ export default function Route() {
                   }}>💡 {d.notes}</div>
                 )}
 
-                <a
-                  href={mapsLink(d.route)}
-                  target="_blank" rel="noreferrer"
-                  style={{
-                    display: 'block', textAlign: 'center', background: 'var(--blue)',
-                    color: '#0a0a0a', fontWeight: 700, fontSize: 14,
-                    borderRadius: 10, padding: '10px 0',
-                  }}
-                >
-                  Open route in Google Maps
-                </a>
+                {isRide && (
+                  <a
+                    href={mapsLink(d.route)}
+                    target="_blank" rel="noreferrer"
+                    style={{
+                      display: 'block', textAlign: 'center', background: 'var(--accent)',
+                      color: '#0a0a0a', fontWeight: 700, fontSize: 14,
+                      borderRadius: 10, padding: '10px 0',
+                    }}
+                  >
+                    Open route in Google Maps
+                  </a>
+                )}
               </div>
             )}
           </div>

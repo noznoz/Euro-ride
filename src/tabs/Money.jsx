@@ -45,7 +45,7 @@ export default function Money() {
       {/* Totals */}
       <div className="card" style={{ textAlign: 'center' }}>
         <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Trip total</div>
-        <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--blue)', marginTop: 4 }}>
+        <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--accent)', marginTop: 4 }}>
           {expenses.length === 0 ? '—' : Object.entries(totals).map(([cur, amt]) => fmt(amt, cur)).join(' + ')}
         </div>
         {Object.keys(byPayer).length > 1 && (
@@ -91,7 +91,7 @@ export default function Money() {
                 onClick={() => setForm(f => ({ ...f, category: c.id }))}
                 style={{
                   padding: '6px 10px', borderRadius: 8, fontSize: 13,
-                  background: form.category === c.id ? 'var(--blue)' : 'var(--surface)',
+                  background: form.category === c.id ? 'var(--accent)' : 'var(--surface)',
                   color: form.category === c.id ? '#0a0a0a' : 'var(--text)',
                   border: '1px solid var(--border)', fontWeight: form.category === c.id ? 700 : 400,
                 }}
@@ -121,14 +121,14 @@ export default function Money() {
               border: '1px solid var(--border)', fontSize: 14,
             }}>Cancel</button>
             <button onClick={add} style={{
-              flex: 2, padding: 10, borderRadius: 10, background: 'var(--blue)',
+              flex: 2, padding: 10, borderRadius: 10, background: 'var(--accent)',
               color: '#0a0a0a', fontWeight: 700, fontSize: 14,
             }}>Add expense</button>
           </div>
         </div>
       ) : (
         <button onClick={() => setShowForm(true)} style={{
-          padding: 12, borderRadius: 12, background: 'var(--blue)',
+          padding: 12, borderRadius: 12, background: 'var(--accent)',
           color: '#0a0a0a', fontWeight: 700, fontSize: 15,
         }}>+ Add expense</button>
       )}

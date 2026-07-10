@@ -12,7 +12,7 @@ export default function Info() {
           <div key={n.label} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '5px 0', fontSize: 13 }}>
             <span style={{ color: 'var(--text-muted)' }}>{n.label}</span>
             {/^[+\d]/.test(n.value)
-              ? <a href={`tel:${n.value.replace(/\s/g, '')}`} style={{ color: 'var(--blue)', fontWeight: 700 }}>{n.value}</a>
+              ? <a href={`tel:${n.value.replace(/\s/g, '')}`} style={{ color: 'var(--accent)', fontWeight: 700 }}>{n.value}</a>
               : <span style={{ fontWeight: 600, textAlign: 'right' }}>{n.value}</span>}
           </div>
         ))}
@@ -28,7 +28,7 @@ export default function Info() {
           <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
             {c.facts.map((f, i) => (
               <li key={i} style={{ fontSize: 13, display: 'flex', gap: 8 }}>
-                <span style={{ color: 'var(--blue)' }}>•</span>
+                <span style={{ color: 'var(--accent)' }}>•</span>
                 <span>{f}</span>
               </li>
             ))}

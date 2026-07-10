@@ -14,10 +14,10 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
       },
       manifest: {
-        name: 'Euro Ride',
-        short_name: 'Euro Ride',
-        description: 'Our Europe motorcycle tour — itinerary, checklists, expenses and riding info',
-        theme_color: '#4C8DFF',
+        name: 'Jeddah Chapter Euro Ride',
+        short_name: 'Jeddah Chapter Euro Ride',
+        description: 'Jeddah Chapter Europe Ride 2026 — itinerary, checklists, expenses and riding info',
+        theme_color: '#FF6A00',
         background_color: '#0a0a0a',
         display: 'standalone',
         icons: [
