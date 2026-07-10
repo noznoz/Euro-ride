@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { trip, itinerary } from '../data/trip.js'
 import { useLocalStorage } from '../lib/useLocalStorage.js'
-import { useProfile } from '../lib/ProfileContext.jsx'
+import { useCollection } from '../lib/useCollection.js'
+import { useRoster } from '../lib/useRoster.js'
+import { useRider } from '../lib/RiderContext.jsx'
 import tripLogo from '../assets/trip-logo.png'
 import chapterLogo from '../assets/chapter-logo.png'
 
@@ -18,21 +20,29 @@ function fmtRange(a, b) {
 }
 
 export default function Trip() {
-  const { profile } = useProfile()
-  const [completed] = useLocalStorage(`euroride.${profile}.completed.v1`, [])
+  const { name, uid, remote } = useRider()
+  const [localCompleted] = useLocalStorage(`euroride.${name}.completed.v1`, [])
+  const sharedCompletions = useCollection('completions', { enabled: remote })
+  const roster = useRoster(remote)
+
+  const myDone = remote
+    ? sharedCompletions.items.filter(c => c.created_by === uid).map(c => c.day)
+    : localCompleted
+
   const rideDays = itinerary.filter(d => d.type === 'ride')
   const totalKm = rideDays.reduce((s, d) => s + (d.km || 0), 0)
-  const doneKm = rideDays.filter(d => completed.includes(d.day)).reduce((s, d) => s + (d.km || 0), 0)
+  const doneKm = rideDays.filter(d => myDone.includes(d.day)).reduce((s, d) => s + (d.km || 0), 0)
   const ridePct = totalKm ? Math.round((doneKm / totalKm) * 100) : 0
   const countdown = daysUntil(trip.startDate)
   const tripOver = daysUntil(trip.endDate) < 0
   const onTrip = countdown <= 0 && !tripOver
 
+  const riders = remote && roster.length > 0 ? roster : trip.riders
   const stats = [
     { value: itinerary.length, label: 'days' },
     { value: `~${totalKm.toLocaleString()}`, label: 'km' },
     { value: rideDays.length, label: 'ride days' },
-    { value: trip.group.size.replace(' riders', ''), label: 'riders' },
+    { value: remote && roster.length > 0 ? roster.length : trip.group.size.replace(' riders', ''), label: 'riders' },
   ]
 
   return (
@@ -99,7 +109,7 @@ export default function Trip() {
       </div>
 
       {/* Bike */}
-      <div className="card" style={{ borderColor: '#3a2410' }}>
+      <div className="card" style={{ borderColor: '#3a2e10' }}>
         <h2 style={{ fontSize: 14, marginBottom: 10 }}>🏍️ The bike</h2>
         <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--accent)' }}>{trip.rental.bikes}</div>
         <Row label="Rental" value={trip.rental.company} />
@@ -117,23 +127,25 @@ export default function Trip() {
         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>{trip.baseHotel.note}</div>
       </div>
 
-      <Reservations profile={profile} />
+      <Reservations />
 
-      {/* Crew */}
+      {/* Crew — live roster when signed in */}
       <div className="card">
         <div style={{ textAlign: 'center', marginBottom: 12 }}>
           <img src={chapterLogo} alt="H.O.G. Jeddah Chapter — Saudi Arabia" style={{ width: 190, maxWidth: '75%' }} />
         </div>
-        <h2 style={{ fontSize: 14, marginBottom: 10 }}>👥 The crew — {trip.group.size}</h2>
+        <h2 style={{ fontSize: 14, marginBottom: 10 }}>
+          👥 The crew — {remote && roster.length > 0 ? `${roster.length} signed up` : trip.group.size}
+        </h2>
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-          {trip.riders.map(r => (
-            <div key={r.name} style={{ textAlign: 'center' }}>
+          {riders.map(r => (
+            <div key={r.id || r.name} style={{ textAlign: 'center' }}>
               <div style={{
                 width: 48, height: 48, borderRadius: '50%',
                 background: 'var(--surface)', border: '2px solid var(--accent)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22,
               }}>{r.emoji}</div>
-              <div style={{ fontSize: 11, marginTop: 4 }}>{r.name}</div>
+              <div style={{ fontSize: 11, marginTop: 4, maxWidth: 56, overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</div>
             </div>
           ))}
         </div>
@@ -156,23 +168,33 @@ export default function Trip() {
   )
 }
 
-// Each rider keeps their own booking references (rooms, bike, insurance…)
-function Reservations({ profile }) {
-  const [items, setItems] = useLocalStorage(`euroride.${profile}.reservations.v1`, [])
+// Each rider keeps their own booking references (rooms, bike, insurance…).
+// Shared mode: stored in Supabase under your account (synced across devices).
+function Reservations() {
+  const { name, uid, remote } = useRider()
+  const [localItems, setLocalItems] = useLocalStorage(`euroride.${name}.reservations.v1`, [])
+  const shared = useCollection('reservations', { enabled: remote })
   const [adding, setAdding] = useState(false)
   const [draft, setDraft] = useState({ label: '', ref: '' })
 
+  const items = remote ? shared.items.filter(i => i.created_by === uid) : localItems
+
   const add = () => {
     if (!draft.label.trim()) return
-    setItems(list => [...list, { ...draft, id: Date.now() }])
+    const item = { ...draft, id: Date.now(), by: name }
+    if (remote) shared.upsert(item)
+    else setLocalItems(list => [...list, item])
     setDraft({ label: '', ref: '' })
     setAdding(false)
   }
-  const remove = (id) => setItems(list => list.filter(i => i.id !== id))
+  const remove = (id) => {
+    if (remote) shared.remove(id)
+    else setLocalItems(list => list.filter(i => i.id !== id))
+  }
 
   return (
     <div className="card">
-      <h2 style={{ fontSize: 14, marginBottom: 8 }}>🎫 My reservations — {profile}</h2>
+      <h2 style={{ fontSize: 14, marginBottom: 8 }}>🎫 My reservations — {name}</h2>
       {items.length === 0 && !adding && (
         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
           Keep your own booking references here: hotel rooms, bike rental, insurance, train tickets…

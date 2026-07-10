@@ -1,13 +1,28 @@
 import { useEffect, useRef, useState } from 'react'
 import { listPhotos, addPhoto, deletePhoto, fileToDataUrl } from '../lib/photoStore.js'
+import { useCollection } from '../lib/useCollection.js'
+import { uploadImage } from '../lib/upload.js'
+import { useRider } from '../lib/RiderContext.jsx'
 
-export default function PhotoStrip({ storageKey }) {
-  const [photos, setPhotos] = useState([])
+// Photos for one itinerary day.
+// Shared mode: uploaded to Supabase storage — the whole group sees them.
+// Local mode: compressed into IndexedDB on this device only.
+export default function PhotoStrip({ day }) {
+  const { name, uid, remote } = useRider()
+  const shared = useCollection('photos', { enabled: remote })
+  const [localPhotos, setLocalPhotos] = useState([])
   const [viewing, setViewing] = useState(null)
   const [busy, setBusy] = useState(false)
   const inputRef = useRef(null)
 
-  useEffect(() => { listPhotos(storageKey).then(setPhotos).catch(() => {}) }, [storageKey])
+  const localKey = `day-${day}`
+  useEffect(() => {
+    if (!remote) listPhotos(localKey).then(setLocalPhotos).catch(() => {})
+  }, [localKey, remote])
+
+  const photos = remote
+    ? shared.items.filter(p => p.day === day).map(p => ({ id: p.id, src: p.url, mine: p.created_by === uid, by: p.by }))
+    : localPhotos.map(p => ({ id: p.id, src: p.dataUrl, mine: true }))
 
   const onFile = async (e) => {
     const files = [...e.target.files]
@@ -16,19 +31,27 @@ export default function PhotoStrip({ storageKey }) {
     setBusy(true)
     try {
       for (const file of files) {
-        const dataUrl = await fileToDataUrl(file)
-        await addPhoto(storageKey, dataUrl)
+        if (remote) {
+          const url = await uploadImage(file, `day-${day}`)
+          if (url) await shared.upsert({ id: Date.now() + Math.random(), day, url, by: name })
+        } else {
+          const dataUrl = await fileToDataUrl(file)
+          await addPhoto(localKey, dataUrl)
+        }
       }
-      setPhotos(await listPhotos(storageKey))
+      if (!remote) setLocalPhotos(await listPhotos(localKey))
     } catch {
-      alert('Could not save that photo — storage may be full.')
+      alert('Could not save that photo — check your connection or storage.')
     }
     setBusy(false)
   }
 
-  const remove = async (id) => {
-    await deletePhoto(id)
-    setPhotos(p => p.filter(x => x.id !== id))
+  const remove = async (p) => {
+    if (remote) shared.remove(p.id)
+    else {
+      await deletePhoto(p.id)
+      setLocalPhotos(list => list.filter(x => x.id !== p.id))
+    }
   }
 
   return (
@@ -37,16 +60,18 @@ export default function PhotoStrip({ storageKey }) {
         {photos.map(p => (
           <div key={p.id} style={{ position: 'relative' }}>
             <img
-              src={p.dataUrl} alt=""
-              onClick={() => setViewing(p.dataUrl)}
+              src={p.src} alt={p.by ? `by ${p.by}` : ''}
+              onClick={() => setViewing(p)}
               style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 8, cursor: 'pointer' }}
             />
-            <button onClick={() => remove(p.id)} style={{
-              position: 'absolute', top: 2, right: 2,
-              background: 'rgba(0,0,0,0.65)', borderRadius: '50%',
-              width: 20, height: 20, fontSize: 11, lineHeight: '20px',
-              color: '#fff',
-            }}>✕</button>
+            {p.mine && (
+              <button onClick={() => remove(p)} style={{
+                position: 'absolute', top: 2, right: 2,
+                background: 'rgba(0,0,0,0.65)', borderRadius: '50%',
+                width: 20, height: 20, fontSize: 11, lineHeight: '20px',
+                color: '#fff',
+              }}>✕</button>
+            )}
           </div>
         ))}
         <button
@@ -70,10 +95,12 @@ export default function PhotoStrip({ storageKey }) {
           style={{
             position: 'fixed', inset: 0, zIndex: 100,
             background: 'rgba(0,0,0,0.92)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', gap: 10,
           }}
         >
-          <img src={viewing} alt="" style={{ maxWidth: '95%', maxHeight: '90%', borderRadius: 10 }} />
+          <img src={viewing.src} alt="" style={{ maxWidth: '95%', maxHeight: '85%', borderRadius: 10 }} />
+          {viewing.by && <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>📷 {viewing.by}</div>}
         </div>
       )}
     </div>

@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { itinerary } from '../data/trip.js'
 import { useLocalStorage } from '../lib/useLocalStorage.js'
-import { useProfile } from '../lib/ProfileContext.jsx'
+import { useCollection } from '../lib/useCollection.js'
+import { useRider } from '../lib/RiderContext.jsx'
 import PhotoStrip from '../components/PhotoStrip.jsx'
 
 // Directions link through every stop of the day, in order.
@@ -26,21 +27,37 @@ function isToday(iso) {
 }
 
 export default function Route() {
-  const { profile } = useProfile()
-  const [completed, setCompleted] = useLocalStorage(`euroride.${profile}.completed.v1`, [])
+  const { name, uid, remote } = useRider()
+  const [localCompleted, setLocalCompleted] = useLocalStorage(`euroride.${name}.completed.v1`, [])
+  const shared = useCollection('completions', { enabled: remote })
   const [open, setOpen] = useState(() => {
     const today = itinerary.find(d => isToday(d.date))
     return today ? today.day : itinerary[0].day
   })
 
+  // My completed day numbers (either source)
+  const myRows = remote ? shared.items.filter(c => c.created_by === uid) : []
+  const myDone = remote ? myRows.map(c => c.day) : localCompleted
+
   const rideDays = itinerary.filter(d => d.type === 'ride')
   const totalKm = rideDays.reduce((s, d) => s + (d.km || 0), 0)
-  const doneKm = rideDays.filter(d => completed.includes(d.day)).reduce((s, d) => s + (d.km || 0), 0)
+  const doneKm = rideDays.filter(d => myDone.includes(d.day)).reduce((s, d) => s + (d.km || 0), 0)
   const pct = totalKm ? Math.round((doneKm / totalKm) * 100) : 0
 
-  const toggleDone = (day) => setCompleted(c =>
-    c.includes(day) ? c.filter(x => x !== day) : [...c, day]
-  )
+  const toggleDone = (d) => {
+    if (remote) {
+      const row = myRows.find(c => c.day === d.day)
+      if (row) shared.remove(row.id)
+      else shared.upsert({ id: Date.now(), day: d.day, km: d.km, by: name })
+    } else {
+      setLocalCompleted(c => c.includes(d.day) ? c.filter(x => x !== d.day) : [...c, d.day])
+    }
+  }
+
+  // Who else finished a day (shared mode)
+  const othersDone = (day) => remote
+    ? shared.items.filter(c => c.day === day && c.created_by !== uid).map(c => c.by || 'rider')
+    : []
 
   return (
     <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -72,7 +89,8 @@ export default function Route() {
         const expanded = open === d.day
         const today = isToday(d.date)
         const isRide = d.type === 'ride'
-        const done = isRide && completed.includes(d.day)
+        const done = isRide && myDone.includes(d.day)
+        const others = expanded && isRide ? othersDone(d.day) : []
         return (
           <div key={d.day} className="card" style={{
             padding: 0, overflow: 'hidden',
@@ -132,8 +150,14 @@ export default function Route() {
                   }}>💡 {d.notes}</div>
                 )}
 
-                {/* Photos of the day */}
-                <PhotoStrip storageKey={`day-${d.day}`} />
+                {/* Photos of the day — shared with the group when signed in */}
+                <PhotoStrip day={d.day} />
+
+                {others.length > 0 && (
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                    ✓ Completed by {others.join(', ')}
+                  </div>
+                )}
 
                 {isRide && (
                   <a
@@ -151,7 +175,7 @@ export default function Route() {
 
                 {isRide && (
                   <button
-                    onClick={() => toggleDone(d.day)}
+                    onClick={() => toggleDone(d)}
                     style={{
                       textAlign: 'center', fontWeight: 700, fontSize: 14,
                       borderRadius: 10, padding: '10px 0',

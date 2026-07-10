@@ -28,6 +28,10 @@ jobs:
         env:
           # Base path must match the repo name exactly (Pages URLs are case-sensitive)
           VITE_BASE: /${{ github.event.repository.name }}/
+          # Supabase backend (optional — without these the app runs in
+          # on-device "local mode"). Set in repo Settings → Secrets → Actions.
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
       # Publish dist/ to the gh-pages branch — GitHub serves it via Pages
       # without needing the Pages-admin API the default token lacks.

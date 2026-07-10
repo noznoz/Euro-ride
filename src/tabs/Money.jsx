@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { fx, expenseCategories } from '../data/trip.js'
 import { useLocalStorage } from '../lib/useLocalStorage.js'
-import { useProfile } from '../lib/ProfileContext.jsx'
+import { useCollection } from '../lib/useCollection.js'
+import { useRider } from '../lib/RiderContext.jsx'
 
 const CURRENCIES = ['EUR', 'CHF', 'SAR']
 const SYMBOL = { EUR: '€', CHF: 'CHF ', SAR: 'SAR ' }
@@ -10,50 +11,63 @@ const fmt = (amount, cur) => `${SYMBOL[cur] || cur + ' '}${amount.toFixed(2)}`
 const toSAR = (amount, cur) => amount * (fx[cur] ?? 1)
 const sarToEur = (sar) => sar / fx.EUR
 
+function Totals({ label, list }) {
+  const totalSAR = list.reduce((s, e) => s + toSAR(e.amount, e.currency), 0)
+  return (
+    <div>
+      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{label}</div>
+      <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--accent)' }}>{fmt(sarToEur(totalSAR), 'EUR')}</div>
+      <div style={{ fontSize: 12, fontWeight: 700 }}>{fmt(totalSAR, 'SAR')}</div>
+    </div>
+  )
+}
+
 export default function Money() {
-  const { profile } = useProfile()
-  const [expenses, setExpenses] = useLocalStorage(`euroride.${profile}.expenses.v1`, [])
+  const { name, uid, remote } = useRider()
+  const [localExpenses, setLocalExpenses] = useLocalStorage(`euroride.${name}.expenses.v1`, [])
+  const shared = useCollection('expenses', { enabled: remote })
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ amount: '', currency: 'EUR', category: 'fuel', note: '' })
+
+  const expenses = remote ? shared.items : localExpenses
+  const mine = remote ? expenses.filter(e => e.created_by === uid) : expenses
 
   const add = () => {
     const amount = parseFloat(form.amount)
     if (!amount || amount <= 0) return
-    setExpenses(list => [
-      { ...form, amount, id: Date.now(), date: new Date().toISOString().slice(0, 10) },
-      ...list,
-    ])
+    const item = {
+      ...form, amount, id: Date.now(), by: name,
+      date: new Date().toISOString().slice(0, 10),
+    }
+    if (remote) shared.upsert(item)
+    else setLocalExpenses(list => [item, ...list])
     setForm(f => ({ ...f, amount: '', note: '' }))
     setShowForm(false)
   }
 
-  const remove = (id) => setExpenses(list => list.filter(e => e.id !== id))
-
-  const totalSAR = expenses.reduce((s, e) => s + toSAR(e.amount, e.currency), 0)
-  const totalEUR = sarToEur(totalSAR)
+  const remove = (id) => {
+    if (remote) shared.remove(id)
+    else setLocalExpenses(list => list.filter(e => e.id !== id))
+  }
 
   const catOf = (id) => expenseCategories.find(c => c.id === id) || expenseCategories[expenseCategories.length - 1]
 
   return (
     <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <h1 style={{ fontSize: 20 }}>💶 Money — {profile}</h1>
+      <h1 style={{ fontSize: 20 }}>💶 Money</h1>
 
       {/* Totals in both currencies */}
       <div className="card" style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>My trip total</div>
         {expenses.length === 0 ? (
-          <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--accent)', marginTop: 4 }}>—</div>
+          <>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Trip total</div>
+            <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--accent)', marginTop: 4 }}>—</div>
+          </>
         ) : (
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 22, marginTop: 6, flexWrap: 'wrap' }}>
-            <div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--accent)' }}>{fmt(totalEUR, 'EUR')}</div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>in Euro</div>
-            </div>
-            <div style={{ width: 1, background: 'var(--border)' }} />
-            <div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--accent)' }}>{fmt(totalSAR, 'SAR')}</div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>in Riyal</div>
-            </div>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 26, flexWrap: 'wrap' }}>
+            <Totals label={`Mine (${name})`} list={mine} />
+            {remote && <div style={{ width: 1, background: 'var(--border)' }} />}
+            {remote && <Totals label="Whole group" list={expenses} />}
           </div>
         )}
         <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 10 }}>
@@ -122,9 +136,10 @@ export default function Money() {
         }}>+ Add expense</button>
       )}
 
-      {/* List */}
+      {/* List — in shared mode you see the whole group's spending */}
       {expenses.map(e => {
         const cat = catOf(e.category)
+        const isMine = remote ? e.created_by === uid : true
         const converted = e.currency === 'SAR'
           ? fmt(sarToEur(e.amount), 'EUR')
           : fmt(toSAR(e.amount, e.currency), 'SAR')
@@ -135,13 +150,17 @@ export default function Money() {
               <div style={{ fontSize: 14, fontWeight: 600 }}>
                 {cat.label}{e.note ? ` — ${e.note}` : ''}
               </div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{e.date}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                {remote ? `${e.by || 'rider'} · ` : ''}{e.date}
+              </div>
             </div>
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontWeight: 700, fontSize: 15 }}>{fmt(e.amount, e.currency)}</div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>≈ {converted}</div>
             </div>
-            <button onClick={() => remove(e.id)} style={{ color: 'var(--text-muted)', fontSize: 14 }}>✕</button>
+            {isMine && (
+              <button onClick={() => remove(e.id)} style={{ color: 'var(--text-muted)', fontSize: 14 }}>✕</button>
+            )}
           </div>
         )
       })}
