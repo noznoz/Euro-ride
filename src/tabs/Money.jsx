@@ -1,17 +1,20 @@
 import { useState } from 'react'
-import { trip, expenseCategories } from '../data/trip.js'
+import { fx, expenseCategories } from '../data/trip.js'
 import { useLocalStorage } from '../lib/useLocalStorage.js'
+import { useProfile } from '../lib/ProfileContext.jsx'
 
-const CURRENCIES = ['EUR', 'CHF']
-const SYMBOL = { EUR: '€', CHF: 'CHF ' }
+const CURRENCIES = ['EUR', 'CHF', 'SAR']
+const SYMBOL = { EUR: '€', CHF: 'CHF ', SAR: 'SAR ' }
+
+const fmt = (amount, cur) => `${SYMBOL[cur] || cur + ' '}${amount.toFixed(2)}`
+const toSAR = (amount, cur) => amount * (fx[cur] ?? 1)
+const sarToEur = (sar) => sar / fx.EUR
 
 export default function Money() {
-  const [expenses, setExpenses] = useLocalStorage('euroride.expenses.v1', [])
+  const { profile } = useProfile()
+  const [expenses, setExpenses] = useLocalStorage(`euroride.${profile}.expenses.v1`, [])
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({
-    amount: '', currency: trip.homeCurrency, category: 'fuel',
-    payer: trip.riders[0]?.name || '', note: '',
-  })
+  const [form, setForm] = useState({ amount: '', currency: 'EUR', category: 'fuel', note: '' })
 
   const add = () => {
     const amount = parseFloat(form.amount)
@@ -26,42 +29,36 @@ export default function Money() {
 
   const remove = (id) => setExpenses(list => list.filter(e => e.id !== id))
 
-  // Totals per currency and per payer (per currency, so we never mix EUR + CHF)
-  const totals = {}
-  const byPayer = {}
-  for (const e of expenses) {
-    totals[e.currency] = (totals[e.currency] || 0) + e.amount
-    byPayer[e.payer] = byPayer[e.payer] || {}
-    byPayer[e.payer][e.currency] = (byPayer[e.payer][e.currency] || 0) + e.amount
-  }
+  const totalSAR = expenses.reduce((s, e) => s + toSAR(e.amount, e.currency), 0)
+  const totalEUR = sarToEur(totalSAR)
 
-  const fmt = (amount, cur) => `${SYMBOL[cur] || cur + ' '}${amount.toFixed(2)}`
   const catOf = (id) => expenseCategories.find(c => c.id === id) || expenseCategories[expenseCategories.length - 1]
 
   return (
     <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <h1 style={{ fontSize: 20 }}>💶 Money</h1>
+      <h1 style={{ fontSize: 20 }}>💶 Money — {profile}</h1>
 
-      {/* Totals */}
+      {/* Totals in both currencies */}
       <div className="card" style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Trip total</div>
-        <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--accent)', marginTop: 4 }}>
-          {expenses.length === 0 ? '—' : Object.entries(totals).map(([cur, amt]) => fmt(amt, cur)).join(' + ')}
-        </div>
-        {Object.keys(byPayer).length > 1 && (
-          <div style={{
-            display: 'flex', justifyContent: 'center', gap: 16,
-            marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)',
-            flexWrap: 'wrap',
-          }}>
-            {Object.entries(byPayer).map(([payer, curs]) => (
-              <div key={payer} style={{ fontSize: 12 }}>
-                <div style={{ color: 'var(--text-muted)' }}>{payer} paid</div>
-                <div style={{ fontWeight: 700 }}>{Object.entries(curs).map(([c, a]) => fmt(a, c)).join(' + ')}</div>
-              </div>
-            ))}
+        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>My trip total</div>
+        {expenses.length === 0 ? (
+          <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--accent)', marginTop: 4 }}>—</div>
+        ) : (
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 22, marginTop: 6, flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--accent)' }}>{fmt(totalEUR, 'EUR')}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>in Euro</div>
+            </div>
+            <div style={{ width: 1, background: 'var(--border)' }} />
+            <div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--accent)' }}>{fmt(totalSAR, 'SAR')}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>in Riyal</div>
+            </div>
           </div>
         )}
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 10 }}>
+          Rates: €1 = SAR {fx.EUR.toFixed(2)} · CHF 1 = SAR {fx.CHF.toFixed(2)} (edit in trip.js)
+        </div>
       </div>
 
       {/* Add */}
@@ -99,14 +96,6 @@ export default function Money() {
             ))}
           </div>
 
-          <select
-            className="field"
-            value={form.payer}
-            onChange={e => setForm(f => ({ ...f, payer: e.target.value }))}
-          >
-            {trip.riders.map(r => <option key={r.name}>{r.name}</option>)}
-          </select>
-
           <input
             className="field"
             placeholder="Note (optional)"
@@ -136,6 +125,9 @@ export default function Money() {
       {/* List */}
       {expenses.map(e => {
         const cat = catOf(e.category)
+        const converted = e.currency === 'SAR'
+          ? fmt(sarToEur(e.amount), 'EUR')
+          : fmt(toSAR(e.amount, e.currency), 'SAR')
         return (
           <div key={e.id} className="card" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12 }}>
             <span style={{ fontSize: 20 }}>{cat.emoji}</span>
@@ -143,9 +135,12 @@ export default function Money() {
               <div style={{ fontSize: 14, fontWeight: 600 }}>
                 {cat.label}{e.note ? ` — ${e.note}` : ''}
               </div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{e.payer} · {e.date}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{e.date}</div>
             </div>
-            <div style={{ fontWeight: 700, fontSize: 15 }}>{fmt(e.amount, e.currency)}</div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontWeight: 700, fontSize: 15 }}>{fmt(e.amount, e.currency)}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>≈ {converted}</div>
+            </div>
             <button onClick={() => remove(e.id)} style={{ color: 'var(--text-muted)', fontSize: 14 }}>✕</button>
           </div>
         )

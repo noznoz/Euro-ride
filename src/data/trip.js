@@ -273,6 +273,17 @@ export const packingTemplate = [
 ]
 
 // ------------------------------------------------------------
+//  EXCHANGE RATES — SAR per 1 unit of each currency.
+//  EDIT these to the real rates just before the trip; every
+//  expense is converted with them.
+// ------------------------------------------------------------
+export const fx = {
+  EUR: 4.06,
+  CHF: 4.35,
+  SAR: 1,
+}
+
+// ------------------------------------------------------------
 //  Expense categories shown in the Money tab.
 // ------------------------------------------------------------
 export const expenseCategories = [

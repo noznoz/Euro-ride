@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { packingTemplate } from '../data/trip.js'
 import { useLocalStorage } from '../lib/useLocalStorage.js'
+import { useProfile } from '../lib/ProfileContext.jsx'
 
 // Stored shape: { groups: [{ group, items: [{ text, done }] }] }
 function fromTemplate() {
@@ -13,7 +14,8 @@ function fromTemplate() {
 }
 
 export default function Packing() {
-  const [state, setState] = useLocalStorage('euroride.packing.v1', fromTemplate())
+  const { profile } = useProfile()
+  const [state, setState] = useLocalStorage(`euroride.${profile}.packing.v1`, fromTemplate())
   const [adding, setAdding] = useState(null) // group name currently adding to
   const [draft, setDraft] = useState('')
 
@@ -49,7 +51,7 @@ export default function Packing() {
   return (
     <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-        <h1 style={{ fontSize: 20 }}>🎒 Packing</h1>
+        <h1 style={{ fontSize: 20 }}>🎒 Packing — {profile}</h1>
         <button
           onClick={() => { if (confirm('Reset the list to the template? Your ticks and custom items will be lost.')) setState(fromTemplate()) }}
           style={{ fontSize: 12, color: 'var(--text-muted)' }}

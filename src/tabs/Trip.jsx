@@ -1,4 +1,7 @@
+import { useState } from 'react'
 import { trip, itinerary } from '../data/trip.js'
+import { useLocalStorage } from '../lib/useLocalStorage.js'
+import { useProfile } from '../lib/ProfileContext.jsx'
 import tripLogo from '../assets/trip-logo.png'
 import chapterLogo from '../assets/chapter-logo.png'
 
@@ -15,8 +18,12 @@ function fmtRange(a, b) {
 }
 
 export default function Trip() {
+  const { profile } = useProfile()
+  const [completed] = useLocalStorage(`euroride.${profile}.completed.v1`, [])
   const rideDays = itinerary.filter(d => d.type === 'ride')
   const totalKm = rideDays.reduce((s, d) => s + (d.km || 0), 0)
+  const doneKm = rideDays.filter(d => completed.includes(d.day)).reduce((s, d) => s + (d.km || 0), 0)
+  const ridePct = totalKm ? Math.round((doneKm / totalKm) * 100) : 0
   const countdown = daysUntil(trip.startDate)
   const tripOver = daysUntil(trip.endDate) < 0
   const onTrip = countdown <= 0 && !tripOver
@@ -53,6 +60,23 @@ export default function Trip() {
             <span><strong style={{ fontSize: 24, color: 'var(--accent)' }}>{countdown}</strong> days to go</span>
           )}
           {tripOver && <span style={{ color: 'var(--text-muted)' }}>Trip complete — what a ride 🤘</span>}
+        </div>
+
+        {/* Ride progress — fed by the "Mark day complete" buttons on the Route tab */}
+        <div style={{ marginTop: 14, textAlign: 'left' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 }}>
+            <span style={{ color: 'var(--text-muted)' }}>Ridden</span>
+            <span style={{ fontWeight: 800, color: ridePct === 100 ? 'var(--green)' : 'var(--accent)' }}>
+              {doneKm.toLocaleString()} / {totalKm.toLocaleString()} km
+            </span>
+          </div>
+          <div style={{ height: 7, background: 'rgba(255,255,255,0.08)', borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{
+              width: `${ridePct}%`, height: '100%',
+              background: ridePct === 100 ? 'var(--green)' : 'var(--accent)',
+              transition: 'width 0.4s',
+            }} />
+          </div>
         </div>
       </div>
 
@@ -93,6 +117,8 @@ export default function Trip() {
         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>{trip.baseHotel.note}</div>
       </div>
 
+      <Reservations profile={profile} />
+
       {/* Crew */}
       <div className="card">
         <div style={{ textAlign: 'center', marginBottom: 12 }}>
@@ -126,6 +152,64 @@ export default function Trip() {
           ))}
         </ul>
       </div>
+    </div>
+  )
+}
+
+// Each rider keeps their own booking references (rooms, bike, insurance…)
+function Reservations({ profile }) {
+  const [items, setItems] = useLocalStorage(`euroride.${profile}.reservations.v1`, [])
+  const [adding, setAdding] = useState(false)
+  const [draft, setDraft] = useState({ label: '', ref: '' })
+
+  const add = () => {
+    if (!draft.label.trim()) return
+    setItems(list => [...list, { ...draft, id: Date.now() }])
+    setDraft({ label: '', ref: '' })
+    setAdding(false)
+  }
+  const remove = (id) => setItems(list => list.filter(i => i.id !== id))
+
+  return (
+    <div className="card">
+      <h2 style={{ fontSize: 14, marginBottom: 8 }}>🎫 My reservations — {profile}</h2>
+      {items.length === 0 && !adding && (
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
+          Keep your own booking references here: hotel rooms, bike rental, insurance, train tickets…
+        </div>
+      )}
+      {items.map(i => (
+        <div key={i.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', fontSize: 13 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 600 }}>{i.label}</div>
+            {i.ref && <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>{i.ref}</div>}
+          </div>
+          <button onClick={() => remove(i.id)} style={{ color: 'var(--text-muted)', fontSize: 14 }}>✕</button>
+        </div>
+      ))}
+      {adding ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+          <input autoFocus className="field" placeholder="What is it? (e.g. Hotel Bregenz — room)"
+            value={draft.label} onChange={e => setDraft(d => ({ ...d, label: e.target.value }))} />
+          <input className="field" placeholder="Reference / confirmation no. (optional)"
+            value={draft.ref} onChange={e => setDraft(d => ({ ...d, ref: e.target.value }))}
+            onKeyDown={e => e.key === 'Enter' && add()} />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => setAdding(false)} style={{
+              flex: 1, padding: 9, borderRadius: 10, background: 'var(--surface)',
+              border: '1px solid var(--border)', fontSize: 13,
+            }}>Cancel</button>
+            <button onClick={add} style={{
+              flex: 2, padding: 9, borderRadius: 10, background: 'var(--accent)',
+              color: '#0a0a0a', fontWeight: 700, fontSize: 13,
+            }}>Save</button>
+          </div>
+        </div>
+      ) : (
+        <button onClick={() => setAdding(true)} style={{ color: 'var(--accent)', fontSize: 13, marginTop: 4 }}>
+          + Add reservation
+        </button>
+      )}
     </div>
   )
 }
