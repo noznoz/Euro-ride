@@ -5,6 +5,7 @@ import AuthScreen from './auth/AuthScreen.jsx'
 import PendingScreen from './auth/PendingScreen.jsx'
 import Trip from './tabs/Trip.jsx'
 import Route from './tabs/Route.jsx'
+import Profile from './tabs/Profile.jsx'
 import Packing from './tabs/Packing.jsx'
 import Money from './tabs/Money.jsx'
 import Info from './tabs/Info.jsx'
@@ -12,7 +13,7 @@ import { AuthProvider, useAuth } from './lib/AuthContext.jsx'
 import { ProfileProvider, useProfile } from './lib/ProfileContext.jsx'
 import { RiderContext } from './lib/RiderContext.jsx'
 
-const SCREENS = { trip: Trip, route: Route, packing: Packing, money: Money, info: Info }
+const SCREENS = { trip: Trip, route: Route, profile: Profile, packing: Packing, money: Money, info: Info }
 
 function Tabs({ rider, chipLabel, onChipTap }) {
   const [tab, setTab] = useState('trip')

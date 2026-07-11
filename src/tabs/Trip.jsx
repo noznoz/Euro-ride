@@ -2,8 +2,11 @@ import { useState } from 'react'
 import { trip, itinerary } from '../data/trip.js'
 import { useLocalStorage } from '../lib/useLocalStorage.js'
 import { useCollection } from '../lib/useCollection.js'
-import { useRoster } from '../lib/useRoster.js'
+import { useRoster, useTripSettings } from '../lib/useRoster.js'
 import { useRider } from '../lib/RiderContext.jsx'
+import { useAuth } from '../lib/AuthContext.jsx'
+import { effectiveTrip } from '../lib/tripConfig.js'
+import TripSettingsEditor from '../components/TripSettingsEditor.jsx'
 import tripLogo from '../assets/trip-logo.png'
 import chapterLogo from '../assets/chapter-logo.png'
 
@@ -21,9 +24,14 @@ function fmtRange(a, b) {
 
 export default function Trip() {
   const { name, uid, remote } = useRider()
+  const { isAdmin } = useAuth()
   const [localCompleted] = useLocalStorage(`euroride.${name}.completed.v1`, [])
   const sharedCompletions = useCollection('completions', { enabled: remote })
   const roster = useRoster(remote)
+  const settings = useTripSettings(remote)
+  const [editing, setEditing] = useState(false)
+
+  const T = effectiveTrip(settings)
 
   const myDone = remote
     ? sharedCompletions.items.filter(c => c.created_by === uid).map(c => c.day)
@@ -33,8 +41,8 @@ export default function Trip() {
   const totalKm = rideDays.reduce((s, d) => s + (d.km || 0), 0)
   const doneKm = rideDays.filter(d => myDone.includes(d.day)).reduce((s, d) => s + (d.km || 0), 0)
   const ridePct = totalKm ? Math.round((doneKm / totalKm) * 100) : 0
-  const countdown = daysUntil(trip.startDate)
-  const tripOver = daysUntil(trip.endDate) < 0
+  const countdown = daysUntil(T.startDate)
+  const tripOver = daysUntil(T.endDate) < 0
   const onTrip = countdown <= 0 && !tripOver
 
   const riders = remote && roster.length > 0 ? roster : trip.riders
@@ -42,11 +50,13 @@ export default function Trip() {
     { value: itinerary.length, label: 'days' },
     { value: `~${totalKm.toLocaleString()}`, label: 'km' },
     { value: rideDays.length, label: 'ride days' },
-    { value: remote && roster.length > 0 ? roster.length : trip.group.size.replace(' riders', ''), label: 'riders' },
+    { value: remote && roster.length > 0 ? roster.length : T.group.size.replace(' riders', ''), label: 'riders' },
   ]
 
   return (
     <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {editing && <TripSettingsEditor current={T} onClose={() => setEditing(false)} />}
+
       {/* Hero */}
       <div style={{
         background: 'radial-gradient(circle at 50% 30%, #242424 0%, #0d0d0d 70%)',
@@ -58,11 +68,11 @@ export default function Trip() {
         <img src={tripLogo} alt="H.O.G. Jeddah Chapter — Europe Tour Sep 2026"
           style={{ width: 210, maxWidth: '80%', filter: 'drop-shadow(0 6px 18px rgba(0,0,0,0.8))' }} />
         <h1 style={{ fontSize: 22, marginTop: 12, letterSpacing: 1, textTransform: 'uppercase' }}>
-          {trip.subName}
+          {T.subName}
         </h1>
-        <div style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 2 }}>{trip.tagline}</div>
+        <div style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 2 }}>{T.tagline}</div>
         <div style={{ color: 'var(--accent)', fontWeight: 700, marginTop: 10, fontSize: 15 }}>
-          {fmtRange(trip.startDate, trip.endDate)}
+          {fmtRange(T.startDate, T.endDate)}
         </div>
         <div style={{ marginTop: 10, fontSize: 15 }}>
           {onTrip && <span style={{ color: 'var(--green)', fontWeight: 700 }}>🟢 ON THE ROAD — day {Math.min(itinerary.length, 1 - countdown)} of {itinerary.length}</span>}
@@ -90,6 +100,13 @@ export default function Trip() {
         </div>
       </div>
 
+      {isAdmin && (
+        <button onClick={() => setEditing(true)} style={{
+          padding: 11, borderRadius: 12, background: 'var(--surface)',
+          border: '1px solid var(--accent)', color: 'var(--accent)', fontWeight: 700, fontSize: 14,
+        }}>✏️ Edit trip details</button>
+      )}
+
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
         {stats.map(s => (
@@ -102,29 +119,29 @@ export default function Trip() {
 
       {/* Flights */}
       <div className="card">
-        <h2 style={{ fontSize: 14, marginBottom: 10 }}>✈️ Flights — {trip.flights.outbound.airline}, {trip.flights.outbound.clazz}</h2>
-        <FlightRow f={trip.flights.outbound} />
+        <h2 style={{ fontSize: 14, marginBottom: 10 }}>✈️ Flights — {T.flights.outbound.airline}, {T.flights.outbound.clazz}</h2>
+        <FlightRow f={T.flights.outbound} />
         <div style={{ borderTop: '1px solid var(--border)', margin: '10px 0' }} />
-        <FlightRow f={trip.flights.inbound} />
+        <FlightRow f={T.flights.inbound} />
       </div>
 
       {/* Bike */}
       <div className="card" style={{ borderColor: '#3a2e10' }}>
         <h2 style={{ fontSize: 14, marginBottom: 10 }}>🏍️ The bike</h2>
-        <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--accent)' }}>{trip.rental.bikes}</div>
-        <Row label="Rental" value={trip.rental.company} />
-        <Row label="Pickup" value={trip.rental.pickup} />
-        <Row label="Drop-off" value={trip.rental.dropoff} />
-        <Row label="Booking" value={trip.rental.bookingRef} />
-        <Row label="Phone" value={trip.rental.phone} />
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>{trip.rental.notes}</div>
+        <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--accent)' }}>{T.rental.bikes}</div>
+        <Row label="Rental" value={T.rental.company} />
+        <Row label="Pickup" value={T.rental.pickup} />
+        <Row label="Drop-off" value={T.rental.dropoff} />
+        <Row label="Booking" value={T.rental.bookingRef} />
+        <Row label="Phone" value={T.rental.phone} />
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>{T.rental.notes}</div>
       </div>
 
       {/* Base hotel */}
       <div className="card">
         <h2 style={{ fontSize: 14, marginBottom: 6 }}>🏨 Base hotel</h2>
-        <div style={{ fontSize: 15, fontWeight: 700 }}>{trip.baseHotel.name}</div>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>{trip.baseHotel.note}</div>
+        <div style={{ fontSize: 15, fontWeight: 700 }}>{T.baseHotel.name}</div>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>{T.baseHotel.note}</div>
       </div>
 
       <Reservations />
@@ -135,7 +152,7 @@ export default function Trip() {
           <img src={chapterLogo} alt="H.O.G. Jeddah Chapter — Saudi Arabia" style={{ width: 190, maxWidth: '75%' }} />
         </div>
         <h2 style={{ fontSize: 14, marginBottom: 10 }}>
-          👥 The crew — {remote && roster.length > 0 ? `${roster.length} signed up` : trip.group.size}
+          👥 The crew — {remote && roster.length > 0 ? `${roster.length} signed up` : T.group.size}
         </h2>
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
           {riders.map(r => (
@@ -143,20 +160,20 @@ export default function Trip() {
               <div style={{
                 width: 48, height: 48, borderRadius: '50%',
                 background: 'var(--surface)', border: '2px solid var(--accent)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22,
-              }}>{r.emoji}</div>
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, overflow: 'hidden',
+              }}>{r.photo ? <img src={r.photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : r.emoji}</div>
               <div style={{ fontSize: 11, marginTop: 4, maxWidth: 56, overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</div>
             </div>
           ))}
         </div>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 10 }}>{trip.group.note}</div>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 10 }}>{T.group.note}</div>
       </div>
 
       {/* Objectives */}
       <div className="card" style={{ borderColor: 'rgba(255,201,60,0.35)' }}>
         <h2 style={{ fontSize: 14, marginBottom: 8 }}>🎯 Trip objectives</h2>
         <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {trip.objectives.map((o, i) => (
+          {T.objectives.map((o, i) => (
             <li key={i} style={{ fontSize: 13, display: 'flex', gap: 8 }}>
               <span style={{ color: 'var(--accent)' }}>▸</span>
               <span>{o}</span>
@@ -169,7 +186,6 @@ export default function Trip() {
 }
 
 // Each rider keeps their own booking references (rooms, bike, insurance…).
-// Shared mode: stored in Supabase under your account (synced across devices).
 function Reservations() {
   const { name, uid, remote } = useRider()
   const [localItems, setLocalItems] = useLocalStorage(`euroride.${name}.reservations.v1`, [])

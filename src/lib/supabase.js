@@ -15,8 +15,12 @@ const DEFAULT_ANON_KEY = 'sb_publishable_2LoA3Iz01mnQ3rauKXTmwQ_FDw-RiY2'
 const url = import.meta.env.VITE_SUPABASE_URL || DEFAULT_URL
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || DEFAULT_ANON_KEY
 
-// True whenever we have real credentials (defaults count).
-export const isConfigured =
+// Set VITE_LOCAL_MODE=1 to force on-device local mode (offline dev / testing).
+const forceLocal = import.meta.env.VITE_LOCAL_MODE === '1'
+
+// True whenever we have real credentials (defaults count) and local mode
+// isn't forced.
+export const isConfigured = !forceLocal &&
   !!url && !!anonKey &&
   url !== 'YOUR_SUPABASE_URL_HERE' &&
   anonKey !== 'YOUR_SUPABASE_ANON_KEY_HERE'

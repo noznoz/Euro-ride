@@ -1,17 +1,19 @@
 import { useState } from 'react'
-import { fx, expenseCategories } from '../data/trip.js'
+import { expenseCategories } from '../data/trip.js'
 import { useLocalStorage } from '../lib/useLocalStorage.js'
 import { useCollection } from '../lib/useCollection.js'
+import { useTripSettings } from '../lib/useRoster.js'
+import { effectiveFx } from '../lib/tripConfig.js'
 import { useRider } from '../lib/RiderContext.jsx'
 
 const CURRENCIES = ['EUR', 'CHF', 'SAR']
 const SYMBOL = { EUR: '€', CHF: 'CHF ', SAR: 'SAR ' }
 
 const fmt = (amount, cur) => `${SYMBOL[cur] || cur + ' '}${amount.toFixed(2)}`
-const toSAR = (amount, cur) => amount * (fx[cur] ?? 1)
-const sarToEur = (sar) => sar / fx.EUR
 
-function Totals({ label, list }) {
+function Totals({ label, list, fx }) {
+  const toSAR = (amount, cur) => amount * (fx[cur] ?? 1)
+  const sarToEur = (sar) => sar / fx.EUR
   const totalSAR = list.reduce((s, e) => s + toSAR(e.amount, e.currency), 0)
   return (
     <div>
@@ -26,6 +28,10 @@ export default function Money() {
   const { name, uid, remote } = useRider()
   const [localExpenses, setLocalExpenses] = useLocalStorage(`euroride.${name}.expenses.v1`, [])
   const shared = useCollection('expenses', { enabled: remote })
+  const settings = useTripSettings(remote)
+  const fx = effectiveFx(settings)
+  const toSAR = (amount, cur) => amount * (fx[cur] ?? 1)
+  const sarToEur = (sar) => sar / fx.EUR
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ amount: '', currency: 'EUR', category: 'fuel', note: '' })
 
@@ -65,13 +71,13 @@ export default function Money() {
           </>
         ) : (
           <div style={{ display: 'flex', justifyContent: 'center', gap: 26, flexWrap: 'wrap' }}>
-            <Totals label={`Mine (${name})`} list={mine} />
+            <Totals label={`Mine (${name})`} list={mine} fx={fx} />
             {remote && <div style={{ width: 1, background: 'var(--border)' }} />}
-            {remote && <Totals label="Whole group" list={expenses} />}
+            {remote && <Totals label="Whole group" list={expenses} fx={fx} />}
           </div>
         )}
         <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 10 }}>
-          Rates: €1 = SAR {fx.EUR.toFixed(2)} · CHF 1 = SAR {fx.CHF.toFixed(2)} (edit in trip.js)
+          Rates: €1 = SAR {fx.EUR.toFixed(2)} · CHF 1 = SAR {fx.CHF.toFixed(2)}
         </div>
       </div>
 

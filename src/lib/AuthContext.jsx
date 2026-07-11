@@ -100,6 +100,22 @@ export function AuthProvider({ children }) {
     () => loadProfile(session?.user?.id),
     [session?.user?.id, loadProfile])
 
+  // Update my own profile. `name` is a column; everything else is merged
+  // into the `data` jsonb (bio, bike, photo, safety, socials, tripSettings…).
+  const updateProfile = useCallback(async ({ name, ...dataPatch }) => {
+    const uid = session?.user?.id
+    if (!uid) return { error: 'not signed in' }
+    let nextData
+    setProfile(p => {
+      nextData = { ...(p?.data || {}), ...dataPatch }
+      return { ...p, ...(name !== undefined ? { name } : {}), data: nextData }
+    })
+    const row = { data: nextData }
+    if (name !== undefined) row.name = name
+    const { error } = await supabase.from('profiles').update(row).eq('id', uid)
+    return { error }
+  }, [session?.user?.id])
+
   const value = {
     isConfigured,
     loading,
@@ -109,7 +125,7 @@ export function AuthProvider({ children }) {
     profile,
     isApproved: profile?.status === 'approved',
     isAdmin: profile?.role === 'admin',
-    signUp, signIn, signInWithGoogle, signOut, redeemInvite, refreshProfile,
+    signUp, signIn, signInWithGoogle, signOut, redeemInvite, refreshProfile, updateProfile,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
