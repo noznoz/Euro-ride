@@ -117,13 +117,8 @@ export default function Trip() {
         ))}
       </div>
 
-      {/* Flights */}
-      <div className="card">
-        <h2 style={{ fontSize: 14, marginBottom: 10 }}>✈️ Flights — {T.flights.outbound.airline}, {T.flights.outbound.clazz}</h2>
-        <FlightRow f={T.flights.outbound} />
-        <div style={{ borderTop: '1px solid var(--border)', margin: '10px 0' }} />
-        <FlightRow f={T.flights.inbound} />
-      </div>
+      {/* Flights — each rider can set their own */}
+      <MyFlights groupFlights={T.flights} />
 
       {/* Bike */}
       <div className="card" style={{ borderColor: '#3a2e10' }}>
@@ -248,6 +243,96 @@ function Reservations() {
           + Add reservation
         </button>
       )}
+    </div>
+  )
+}
+
+// Each rider's own flights. Defaults to the group flight the admin set,
+// until the rider edits their own (e.g. the early-arrival crew).
+function MyFlights({ groupFlights }) {
+  const { name, remote } = useRider()
+  const { profile, updateProfile } = useAuth()
+  const [localFlights, setLocalFlights] = useLocalStorage(`euroride.${name}.myflights.v1`, null)
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(null)
+
+  const saved = remote ? profile?.data?.myFlights : localFlights
+  const flights = saved || groupFlights
+  const isCustom = !!saved
+
+  const startEdit = () => {
+    setDraft({ outbound: { ...flights.outbound }, inbound: { ...flights.inbound } })
+    setEditing(true)
+  }
+  const setLeg = (leg, k, v) => setDraft(d => ({ ...d, [leg]: { ...d[leg], [k]: v } }))
+  const save = async () => {
+    if (remote) await updateProfile({ myFlights: draft })
+    else setLocalFlights(draft)
+    setEditing(false)
+  }
+  const useGroup = async () => {
+    if (remote) await updateProfile({ myFlights: null })
+    else setLocalFlights(null)
+    setEditing(false)
+  }
+
+  if (editing) {
+    return (
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <h2 style={{ fontSize: 14 }}>✈️ My flights</h2>
+        <LegForm title="Outbound" leg={draft.outbound} on={(k, v) => setLeg('outbound', k, v)} />
+        <LegForm title="Return" leg={draft.inbound} on={(k, v) => setLeg('inbound', k, v)} />
+        <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+          <button onClick={() => setEditing(false)} style={{
+            flex: 1, padding: 10, borderRadius: 10, background: 'var(--surface)',
+            border: '1px solid var(--border)', fontSize: 13,
+          }}>Cancel</button>
+          <button onClick={save} style={{
+            flex: 2, padding: 10, borderRadius: 10, background: 'var(--accent)',
+            color: '#0a0a0a', fontWeight: 700, fontSize: 14,
+          }}>Save my flights</button>
+        </div>
+        {isCustom && (
+          <button onClick={useGroup} style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+            Reset to the group flight
+          </button>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="card">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <h2 style={{ fontSize: 14 }}>
+          ✈️ My flights {!isCustom && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>· group default</span>}
+        </h2>
+        <button onClick={startEdit} style={{
+          background: 'var(--accent)', color: '#0a0a0a', fontWeight: 700,
+          borderRadius: 20, padding: '5px 12px', fontSize: 12,
+        }}>Edit</button>
+      </div>
+      <FlightRow f={flights.outbound} />
+      <div style={{ borderTop: '1px solid var(--border)', margin: '10px 0' }} />
+      <FlightRow f={flights.inbound} />
+    </div>
+  )
+}
+
+function LegForm({ title, leg, on }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ fontSize: 11, color: 'var(--text-muted)', letterSpacing: 1, textTransform: 'uppercase' }}>{title}</div>
+      <div style={{ display: 'flex', gap: 6 }}>
+        <input className="field" placeholder="Airline" value={leg.airline || ''} onChange={e => on('airline', e.target.value)} />
+        <input className="field" placeholder="Flight no." value={leg.flight || ''} onChange={e => on('flight', e.target.value)} />
+      </div>
+      <input className="field" placeholder="Route (JED → MUC)" value={leg.route || ''} onChange={e => on('route', e.target.value)} />
+      <div style={{ display: 'flex', gap: 6 }}>
+        <input className="field" placeholder="Date" value={leg.date || ''} onChange={e => on('date', e.target.value)} />
+        <input className="field" placeholder="Class" value={leg.clazz || ''} onChange={e => on('clazz', e.target.value)} />
+      </div>
+      <input className="field" placeholder="Detail (seat, arrival, PNR…)" value={leg.detail || ''} onChange={e => on('detail', e.target.value)} />
     </div>
   )
 }
