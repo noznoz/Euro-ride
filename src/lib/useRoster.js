@@ -28,7 +28,7 @@ export function useRoster(enabled = true) {
     }
     load()
     const channel = supabase
-      .channel('realtime:roster')
+      .channel(`rt:roster:${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, load)
       .subscribe()
     return () => { alive = false; supabase.removeChannel(channel) }
@@ -57,7 +57,7 @@ export function useTripSettings(enabled = true) {
     }
     load()
     const channel = supabase
-      .channel('realtime:tripsettings')
+      .channel(`rt:tripsettings:${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, load)
       .subscribe()
     return () => { alive = false; supabase.removeChannel(channel) }

@@ -23,7 +23,7 @@ export function useCollection(table, { enabled = true, orderBy = 'id', ascending
     if (!enabled) { setLoading(false); return }
     refetch()
     const channel = supabase
-      .channel(`realtime:${table}`)
+      .channel(`rt:${table}:${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table }, () => refetch())
       .subscribe()
     // Fallback poll every 15s in case Realtime misses an event

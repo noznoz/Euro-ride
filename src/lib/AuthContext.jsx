@@ -56,7 +56,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (!isConfigured || !session?.user?.id) return
     const channel = supabase
-      .channel('realtime:my-profile')
+      .channel(`rt:my-profile:${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${session.user.id}` },
         payload => setProfile(payload.new))

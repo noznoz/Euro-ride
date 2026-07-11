@@ -20,7 +20,7 @@ export function useMessages(enabled = true) {
     if (!enabled) { setItems([]); return }
     refetch()
     const channel = supabase
-      .channel('realtime:messages')
+      .channel(`rt:messages:${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => refetch())
       .subscribe()
     const poll = setInterval(refetch, 15000)
