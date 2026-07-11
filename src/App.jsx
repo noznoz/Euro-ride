@@ -20,6 +20,7 @@ import { useLocalStorage } from './lib/useLocalStorage.js'
 import { useMessages } from './lib/useMessages.js'
 import { useCollection } from './lib/useCollection.js'
 import { useRoster } from './lib/useRoster.js'
+import { buildActivity } from './lib/activity.js'
 
 const SCREENS = { trip: Trip, route: Route, profile: Profile, news: News, packing: Packing, money: Money, info: Info }
 
@@ -28,26 +29,34 @@ function Tabs({ rider, chipLabel, onChipTap }) {
   const Screen = SCREENS[tab]
   const mainRef = useRef(null)
 
-  // Inbox + notifications
+  // Inbox + notifications — all shared activity feeds the bell
   const remote = rider.remote
   const roster = useRoster(remote)
   const msgs = useMessages(remote)
   const ann = useCollection('announcements', { enabled: remote, orderBy: 'id', ascending: false })
+  const expenses = useCollection('expenses', { enabled: remote })
+  const reservations = useCollection('reservations', { enabled: remote })
+  const completions = useCollection('completions', { enabled: remote })
+  const photos = useCollection('photos', { enabled: remote })
   const [lastRead, setLastRead] = useLocalStorage(`euroride.${rider.name}.inboxRead`, 0)
   const [lastSeen, setLastSeen] = useLocalStorage(`euroride.${rider.name}.notifSeen`, 0)
   const [overlay, setOverlay] = useState(null)        // 'inbox' | 'notif' | null
   const [inboxPartner, setInboxPartner] = useState(null)
 
+  const activity = remote ? buildActivity({
+    rider, roster,
+    announcements: ann.items, expenses: expenses.items, reservations: reservations.items,
+    completions: completions.items, photos: photos.items, messages: msgs.items,
+  }) : []
+
   const unreadMsgs = remote
     ? msgs.items.filter(m => m.to_id === rider.uid && m.created_by !== rider.uid && (m.ts || m.id) > lastRead).length
     : 0
-  const unreadNotif = remote
-    ? ann.items.filter(a => a.by !== rider.name && (a.ts || a.id) > lastSeen).length
-      + msgs.items.filter(m => m.to_id === rider.uid && m.created_by !== rider.uid && (m.ts || m.id) > lastSeen).length
-    : 0
+  const unreadNotif = activity.filter(a => a.ts > lastSeen).length
 
   const openInbox = (partner = null) => { setInboxPartner(partner); setOverlay('inbox'); setLastRead(Date.now()) }
   const openNotif = () => { setOverlay('notif'); setLastSeen(Date.now()) }
+  const navigateTo = (tabId) => { setOverlay(null); setTab(tabId) }
 
   // Pull down from the top to reload the app (fresh data + latest version).
   const onRefresh = useCallback(async () => {
@@ -93,8 +102,8 @@ function Tabs({ rider, chipLabel, onChipTap }) {
             initialPartner={inboxPartner} onClose={() => setOverlay(null)} />
         )}
         {overlay === 'notif' && (
-          <NotificationCenter rider={rider} announcements={ann.items} messages={msgs.items} lastSeen={lastSeen}
-            onOpenNews={() => { setOverlay(null); setTab('news') }}
+          <NotificationCenter activity={activity} lastSeen={lastSeen}
+            onNavigate={navigateTo}
             onOpenThread={(partner) => openInbox(partner)}
             onClose={() => setOverlay(null)} />
         )}

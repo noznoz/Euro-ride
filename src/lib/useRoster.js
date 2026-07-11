@@ -12,7 +12,7 @@ export function useRoster(enabled = true) {
     const load = async () => {
       const { data } = await supabase
         .from('profiles')
-        .select('id, name, role, data')
+        .select('id, name, role, data, created_at')
         .eq('status', 'approved')
         .order('created_at', { ascending: true })
       if (alive && data) {
@@ -23,6 +23,7 @@ export function useRoster(enabled = true) {
           emoji: p.data?.emoji || '🏍️',
           photo: p.data?.photo || null,
           data: p.data || {},
+          joinedTs: p.created_at ? new Date(p.created_at).getTime() : null,
         })))
       }
     }
