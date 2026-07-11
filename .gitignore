@@ -8,3 +8,4 @@ dev-dist/
 
 # temporary test builds
 dist-local/
+dist-test/
