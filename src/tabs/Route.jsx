@@ -4,6 +4,8 @@ import { useLocalStorage } from '../lib/useLocalStorage.js'
 import { useCollection } from '../lib/useCollection.js'
 import { useRider } from '../lib/RiderContext.jsx'
 import PhotoStrip from '../components/PhotoStrip.jsx'
+import DayWeather from '../components/DayWeather.jsx'
+import Album from '../components/Album.jsx'
 
 // Directions link through every stop of the day, in order.
 function mapsLink(route) {
@@ -30,6 +32,7 @@ export default function Route() {
   const { name, uid, remote } = useRider()
   const [localCompleted, setLocalCompleted] = useLocalStorage(`euroride.${name}.completed.v1`, [])
   const shared = useCollection('completions', { enabled: remote })
+  const [showAlbum, setShowAlbum] = useState(false)
   const [open, setOpen] = useState(() => {
     const today = itinerary.find(d => isToday(d.date))
     return today ? today.day : itinerary[0].day
@@ -61,7 +64,14 @@ export default function Route() {
 
   return (
     <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <h1 style={{ fontSize: 20 }}>🗺️ Itinerary</h1>
+      {showAlbum && <Album onClose={() => setShowAlbum(false)} />}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1 style={{ fontSize: 20 }}>🗺️ Itinerary</h1>
+        <button onClick={() => setShowAlbum(true)} style={{
+          background: 'var(--surface)', border: '1px solid var(--accent)', color: 'var(--accent)',
+          fontWeight: 700, fontSize: 13, borderRadius: 20, padding: '6px 12px',
+        }}>📸 Trip album</button>
+      </div>
 
       {/* Ride progress */}
       <div className="card" style={{ padding: 12 }}>
@@ -143,6 +153,9 @@ export default function Route() {
                 </ul>
 
                 <div style={{ fontSize: 13 }}>🛏️ <span style={{ color: 'var(--text-muted)' }}>{d.hotel}</span></div>
+
+                <DayWeather day={d.day} date={d.date} />
+
                 {d.notes && (
                   <div style={{
                     fontSize: 12, color: 'var(--gold)', background: 'rgba(255,201,60,0.08)',

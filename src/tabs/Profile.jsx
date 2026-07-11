@@ -5,6 +5,7 @@ import { useRoster } from '../lib/useRoster.js'
 import { useLocalStorage } from '../lib/useLocalStorage.js'
 import { uploadImage } from '../lib/upload.js'
 import { fileToDataUrl } from '../lib/photoStore.js'
+import Documents from '../components/Documents.jsx'
 
 const EMOJIS = ['🏍️', '😎', '🔥', '🦅', '🤘', '🧔', '👑', '⚡', '🌟', '🐺']
 
@@ -39,6 +40,8 @@ export default function Profile() {
       <h1 style={{ fontSize: 20 }}>👤 Profile</h1>
 
       <MyProfileCard me={me} save={save} remote={remote} />
+
+      <Documents />
 
       {remote && roster.length > 0 && (
         <div>

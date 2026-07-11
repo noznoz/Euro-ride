@@ -190,6 +190,25 @@ export const itinerary = [
 ]
 
 // ------------------------------------------------------------
+//  Where each day ends (for the weather forecast). lat/lon of the
+//  overnight town.
+// ------------------------------------------------------------
+export const dayLocations = {
+  1:  { name: 'Munich',    lat: 48.137, lon: 11.575 },
+  2:  { name: 'Munich',    lat: 48.137, lon: 11.575 },
+  3:  { name: 'Bregenz',   lat: 47.503, lon: 9.747 },
+  4:  { name: 'Andermatt', lat: 46.634, lon: 8.594 },
+  5:  { name: 'Montreux',  lat: 46.433, lon: 6.911 },
+  6:  { name: 'Montreux',  lat: 46.433, lon: 6.911 },
+  7:  { name: 'Täsch',     lat: 46.068, lon: 7.779 },
+  8:  { name: 'Como',      lat: 45.808, lon: 9.085 },
+  9:  { name: 'Livigno',   lat: 46.538, lon: 10.134 },
+  10: { name: 'Achensee',  lat: 47.443, lon: 11.735 },
+  11: { name: 'Munich',    lat: 48.137, lon: 11.575 },
+  12: { name: 'Munich',    lat: 48.137, lon: 11.575 },
+}
+
+// ------------------------------------------------------------
 //  COUNTRY INFO — riding rules for every country on the route.
 // ------------------------------------------------------------
 export const countries = [

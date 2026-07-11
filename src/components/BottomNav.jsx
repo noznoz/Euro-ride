@@ -2,6 +2,7 @@ const TABS = [
   { id: 'trip',     label: 'Trip',     icon: '🏍️' },
   { id: 'route',    label: 'Route',    icon: '🗺️' },
   { id: 'profile',  label: 'Riders',   icon: '👤' },
+  { id: 'news',     label: 'News',     icon: '📣' },
   { id: 'packing',  label: 'Packing',  icon: '🎒' },
   { id: 'money',    label: 'Money',    icon: '💶' },
   { id: 'info',     label: 'Info',     icon: '🛂' },

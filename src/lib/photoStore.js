@@ -25,6 +25,15 @@ export async function listPhotos(key) {
   })
 }
 
+export async function listAllPhotos() {
+  const db = await openDB()
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(STORE, 'readonly').objectStore(STORE).getAll()
+    req.onsuccess = () => resolve(req.result)
+    req.onerror = () => reject(req.error)
+  })
+}
+
 export async function addPhoto(key, dataUrl) {
   const db = await openDB()
   return new Promise((resolve, reject) => {
