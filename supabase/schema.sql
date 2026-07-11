@@ -62,6 +62,16 @@ create table if not exists public.announcements (
   created_at timestamptz not null default now()
 );
 
+-- Direct messages (Inbox). to_id is a real column so RLS can restrict reads
+-- to the sender and recipient only.
+create table if not exists public.messages (
+  id numeric primary key,
+  data jsonb not null default '{}'::jsonb,
+  to_id uuid references public.profiles(id) on delete cascade,
+  created_by uuid references public.profiles(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
 -- ---------------------------------------------------------------------
 -- INVITE CODES — anyone who signs up with a valid active code is
 -- auto-approved (skips the admin queue).
@@ -240,3 +250,27 @@ create policy media_write on storage.objects
   for insert to authenticated with check (bucket_id = 'media' and public.is_approved());
 
 -- Done. Create your account in the app — the first signup becomes admin.
+
+-- ---------------------------------------------------------------------
+-- MESSAGES (Inbox) — sender + recipient only can read
+-- ---------------------------------------------------------------------
+alter table public.messages enable row level security;
+
+drop policy if exists messages_select on public.messages;
+create policy messages_select on public.messages
+  for select to authenticated
+  using (public.is_approved() and (created_by = auth.uid() or to_id = auth.uid()));
+
+drop policy if exists messages_insert on public.messages;
+create policy messages_insert on public.messages
+  for insert to authenticated
+  with check (public.is_approved() and created_by = auth.uid());
+
+drop policy if exists messages_delete on public.messages;
+create policy messages_delete on public.messages
+  for delete to authenticated
+  using (created_by = auth.uid() or public.is_admin());
+
+do $$ begin
+  alter publication supabase_realtime add table public.messages;
+exception when duplicate_object then null; end $$;
