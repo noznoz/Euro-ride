@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
+import { usePullToRefresh, PULL_THRESHOLD } from './lib/usePullToRefresh.js'
 import BottomNav from './components/BottomNav.jsx'
 import ProfilePicker from './components/ProfilePicker.jsx'
 import AuthScreen from './auth/AuthScreen.jsx'
@@ -18,6 +19,18 @@ const SCREENS = { trip: Trip, route: Route, profile: Profile, packing: Packing, 
 function Tabs({ rider, chipLabel, onChipTap }) {
   const [tab, setTab] = useState('trip')
   const Screen = SCREENS[tab]
+  const mainRef = useRef(null)
+
+  // Pull down from the top to reload the app (fresh data + latest version).
+  const onRefresh = useCallback(async () => {
+    await new Promise(r => setTimeout(r, 300))
+    window.location.reload()
+    await new Promise(() => {}) // keep the spinner up until the reload happens
+  }, [])
+  const { pullDistance, refreshing } = usePullToRefresh(mainRef, onRefresh)
+  const active = refreshing || pullDistance > 0
+  const spin = refreshing || pullDistance >= PULL_THRESHOLD
+
   return (
     <RiderContext.Provider value={rider}>
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -39,13 +52,35 @@ function Tabs({ rider, chipLabel, onChipTap }) {
           </button>
         </header>
 
-        {/* key remounts the tabs so per-rider storage reloads on switch */}
-        <main key={rider.uid} style={{
+        <main ref={mainRef} style={{
           flex: 1,
           overflowY: 'auto',
           WebkitOverflowScrolling: 'touch',
+          position: 'relative',
         }}>
-          <Screen />
+          {/* Pull-to-refresh spinner */}
+          <div style={{
+            position: 'absolute', top: 0, left: 0, right: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            height: refreshing ? 44 : Math.max(0, pullDistance),
+            opacity: active ? 1 : 0,
+            pointerEvents: 'none', overflow: 'hidden', zIndex: 5,
+          }}>
+            <span style={{
+              width: 22, height: 22, borderRadius: '50%',
+              border: '2px solid var(--border)', borderTopColor: 'var(--accent)',
+              display: 'block',
+              animation: spin ? 'ptr-spin 0.7s linear infinite' : 'none',
+              transform: spin ? 'none' : `rotate(${pullDistance * 3}deg)`,
+            }} />
+          </div>
+
+          {/* key remounts the tabs so per-rider storage reloads on switch */}
+          <div key={rider.uid} style={{
+            transform: active && !refreshing ? `translateY(${pullDistance}px)` : 'none',
+          }}>
+            <Screen />
+          </div>
         </main>
         <BottomNav active={tab} onChange={setTab} />
       </div>
