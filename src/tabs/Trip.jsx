@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { trip, itinerary } from '../data/trip.js'
 import { useLocalStorage } from '../lib/useLocalStorage.js'
 import { useCollection } from '../lib/useCollection.js'
@@ -6,6 +6,8 @@ import { useRoster, useTripSettings } from '../lib/useRoster.js'
 import { useRider } from '../lib/RiderContext.jsx'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { effectiveTrip } from '../lib/tripConfig.js'
+import { uploadImage } from '../lib/upload.js'
+import { fileToDataUrl } from '../lib/photoStore.js'
 import TripSettingsEditor from '../components/TripSettingsEditor.jsx'
 import tripLogo from '../assets/trip-logo.png'
 import chapterLogo from '../assets/chapter-logo.png'
@@ -120,17 +122,8 @@ export default function Trip() {
       {/* Flights — each rider can set their own */}
       <MyFlights groupFlights={T.flights} />
 
-      {/* Bike */}
-      <div className="card" style={{ borderColor: '#3a2e10' }}>
-        <h2 style={{ fontSize: 14, marginBottom: 10 }}>🏍️ The bike</h2>
-        <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--accent)' }}>{T.rental.bikes}</div>
-        <Row label="Rental" value={T.rental.company} />
-        <Row label="Pickup" value={T.rental.pickup} />
-        <Row label="Drop-off" value={T.rental.dropoff} />
-        <Row label="Booking" value={T.rental.bookingRef} />
-        <Row label="Phone" value={T.rental.phone} />
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>{T.rental.notes}</div>
-      </div>
+      {/* Bike — each rider can set their own + a photo */}
+      <MyBike groupRental={T.rental} />
 
       {/* Base hotel */}
       <div className="card">
@@ -243,6 +236,122 @@ function Reservations() {
           + Add reservation
         </button>
       )}
+    </div>
+  )
+}
+
+// Each rider's own rented bike + photo. Defaults to the group bike the
+// admin set, until the rider customizes it.
+function MyBike({ groupRental }) {
+  const { name, remote } = useRider()
+  const { profile, updateProfile } = useAuth()
+  const [localBike, setLocalBike] = useLocalStorage(`euroride.${name}.mybike.v1`, null)
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const fileRef = useRef(null)
+
+  const saved = remote ? profile?.data?.myBike : localBike
+  const bike = saved || groupRental
+  const isCustom = !!saved
+
+  const startEdit = () => { setDraft({ ...bike }); setEditing(true) }
+  const set = (k, v) => setDraft(d => ({ ...d, [k]: v }))
+  const save = async () => {
+    if (remote) await updateProfile({ myBike: draft })
+    else setLocalBike(draft)
+    setEditing(false)
+  }
+  const useGroup = async () => {
+    if (remote) await updateProfile({ myBike: null })
+    else setLocalBike(null)
+    setEditing(false)
+  }
+
+  const pickPhoto = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setBusy(true)
+    try {
+      const photo = remote ? await uploadImage(file, 'bikes') : await fileToDataUrl(file, 1200, 0.8)
+      if (photo) setDraft(d => ({ ...d, photo }))
+    } catch { alert('Could not upload that photo.') }
+    setBusy(false)
+  }
+
+  if (editing) {
+    return (
+      <div className="card" style={{ borderColor: '#3a2e10', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <h2 style={{ fontSize: 14 }}>🏍️ My bike</h2>
+        <button onClick={() => fileRef.current?.click()} disabled={busy} style={{
+          width: '100%', aspectRatio: '16/10', borderRadius: 12, overflow: 'hidden',
+          border: '1px dashed var(--border)', background: 'var(--surface)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: 'var(--text-muted)', fontSize: 14,
+        }}>
+          {draft.photo
+            ? <img src={draft.photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            : (busy ? 'Uploading…' : '📷 Add a photo of your bike')}
+        </button>
+        <input ref={fileRef} type="file" accept="image/*" onChange={pickPhoto} style={{ display: 'none' }} />
+        {draft.photo && <button onClick={() => set('photo', '')} style={{ fontSize: 12, color: 'var(--text-muted)' }}>Remove photo</button>}
+
+        <input className="field" placeholder="Bike model" value={draft.bikes || ''} onChange={e => set('bikes', e.target.value)} />
+        <input className="field" placeholder="Rental company" value={draft.company || ''} onChange={e => set('company', e.target.value)} />
+        <div style={{ display: 'flex', gap: 6 }}>
+          <input className="field" placeholder="Pickup" value={draft.pickup || ''} onChange={e => set('pickup', e.target.value)} />
+          <input className="field" placeholder="Drop-off" value={draft.dropoff || ''} onChange={e => set('dropoff', e.target.value)} />
+        </div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <input className="field" placeholder="Booking ref" value={draft.bookingRef || ''} onChange={e => set('bookingRef', e.target.value)} />
+          <input className="field" placeholder="Plate / phone" value={draft.phone || ''} onChange={e => set('phone', e.target.value)} />
+        </div>
+        <input className="field" placeholder="Notes" value={draft.notes || ''} onChange={e => set('notes', e.target.value)} />
+
+        <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+          <button onClick={() => setEditing(false)} style={{
+            flex: 1, padding: 10, borderRadius: 10, background: 'var(--surface)',
+            border: '1px solid var(--border)', fontSize: 13,
+          }}>Cancel</button>
+          <button onClick={save} disabled={busy} style={{
+            flex: 2, padding: 10, borderRadius: 10, background: 'var(--accent)',
+            color: '#0a0a0a', fontWeight: 700, fontSize: 14, opacity: busy ? 0.6 : 1,
+          }}>Save my bike</button>
+        </div>
+        {isCustom && (
+          <button onClick={useGroup} style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+            Reset to the group bike
+          </button>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="card" style={{ borderColor: '#3a2e10' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <h2 style={{ fontSize: 14 }}>
+          🏍️ My bike {!isCustom && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>· group default</span>}
+        </h2>
+        <button onClick={startEdit} style={{
+          background: 'var(--accent)', color: '#0a0a0a', fontWeight: 700,
+          borderRadius: 20, padding: '5px 12px', fontSize: 12,
+        }}>Edit</button>
+      </div>
+      {bike.photo && (
+        <img src={bike.photo} alt="" style={{
+          width: '100%', aspectRatio: '16/10', objectFit: 'cover',
+          borderRadius: 12, marginBottom: 10,
+        }} />
+      )}
+      <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--accent)' }}>{bike.bikes}</div>
+      <Row label="Rental" value={bike.company} />
+      <Row label="Pickup" value={bike.pickup} />
+      <Row label="Drop-off" value={bike.dropoff} />
+      <Row label="Booking" value={bike.bookingRef} />
+      <Row label="Plate/Ph" value={bike.phone} />
+      {bike.notes && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>{bike.notes}</div>}
     </div>
   )
 }
