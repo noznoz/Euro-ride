@@ -1,20 +1,25 @@
 import { useEffect, useState } from 'react'
 import { useCollection } from '../lib/useCollection.js'
 import { useRider } from '../lib/RiderContext.jsx'
+import { useRoster } from '../lib/useRoster.js'
+import { useViewRider } from '../lib/ViewRiderContext.jsx'
 import { listAllPhotos } from '../lib/photoStore.js'
 import { itinerary } from '../data/trip.js'
+import PhotoViewer from './PhotoViewer.jsx'
 
 // Full-screen combined gallery of every rider's day photos.
 export default function Album({ onClose }) {
-  const { remote } = useRider()
+  const { uid, remote } = useRider()
   const shared = useCollection('photos', { enabled: remote })
+  const roster = useRoster(remote)
+  const { openRider } = useViewRider()
   const [localPhotos, setLocalPhotos] = useState([])
   const [viewing, setViewing] = useState(null)
 
   useEffect(() => { if (!remote) listAllPhotos().then(setLocalPhotos).catch(() => {}) }, [remote])
 
   const photos = remote
-    ? shared.items.map(p => ({ id: p.id, src: p.url, day: p.day, by: p.by }))
+    ? shared.items.map(p => ({ id: p.id, src: p.url, day: p.day, by: p.by, from: p.created_by, mine: p.created_by === uid, tags: p.tags }))
     : localPhotos.map(p => ({ id: p.id, src: p.dataUrl, day: Number(String(p.key).replace('day-', '')) }))
 
   const byDay = {}
@@ -58,13 +63,11 @@ export default function Album({ onClose }) {
       </div>
 
       {viewing && (
-        <div onClick={() => setViewing(null)} style={{
-          position: 'fixed', inset: 0, zIndex: 210, background: 'rgba(0,0,0,0.94)',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10,
-        }}>
-          <img src={viewing.src} alt="" style={{ maxWidth: '96%', maxHeight: '86%', borderRadius: 8 }} />
-          {viewing.by && <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>📷 {viewing.by}</div>}
-        </div>
+        <PhotoViewer
+          photo={viewing} roster={roster} meId={uid} openRider={openRider}
+          onSaveTags={remote ? (tags) => { shared.update(viewing.id, { tags }); setViewing(v => ({ ...v, tags })) } : null}
+          onClose={() => setViewing(null)}
+        />
       )}
     </div>
   )

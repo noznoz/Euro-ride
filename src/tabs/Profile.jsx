@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useRider } from '../lib/RiderContext.jsx'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { useRoster } from '../lib/useRoster.js'
+import { usePending } from '../lib/usePending.js'
 import { useLocalStorage } from '../lib/useLocalStorage.js'
 import { uploadImage } from '../lib/upload.js'
 import { fileToDataUrl } from '../lib/photoStore.js'
@@ -23,7 +24,7 @@ const FIELDS = [
 ]
 
 export default function Profile() {
-  const { name, remote } = useRider()
+  const { name, remote, isAdmin } = useRider()
   const { profile, updateProfile } = useAuth()
   const [localProfile, setLocalProfile] = useLocalStorage(`euroride.${name}.profileinfo.v1`, {})
   const roster = useRoster(remote)
@@ -38,6 +39,8 @@ export default function Profile() {
   return (
     <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
       <h1 style={{ fontSize: 20 }}>👤 Profile</h1>
+
+      {remote && isAdmin && <PendingApprovals />}
 
       <MyProfileCard me={me} save={save} remote={remote} />
 
@@ -57,6 +60,35 @@ export default function Profile() {
           You're in local mode — your profile stays on this device.
         </div>
       )}
+    </div>
+  )
+}
+
+function PendingApprovals() {
+  const { pending, approve, reject } = usePending(true)
+  if (pending.length === 0) return null
+  return (
+    <div className="card" style={{ borderColor: 'var(--accent)' }}>
+      <h2 style={{ fontSize: 14, marginBottom: 4 }}>⏳ Pending approval · {pending.length}</h2>
+      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>
+        These riders signed up without the invite code. Approve to let them in.
+      </div>
+      {pending.map(p => (
+        <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: '1px solid var(--border)' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 700 }}>{p.name}</div>
+            {p.email && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.email}</div>}
+          </div>
+          <button onClick={() => reject(p.id)} style={{
+            fontSize: 12, color: 'var(--text-muted)', padding: '6px 10px',
+            border: '1px solid var(--border)', borderRadius: 8,
+          }}>Remove</button>
+          <button onClick={() => approve(p.id)} style={{
+            fontSize: 13, fontWeight: 700, color: '#0a0a0a', background: 'var(--green)',
+            padding: '6px 14px', borderRadius: 8,
+          }}>Approve</button>
+        </div>
+      ))}
     </div>
   )
 }

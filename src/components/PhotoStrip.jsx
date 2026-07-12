@@ -3,6 +3,9 @@ import { listPhotos, addPhoto, deletePhoto, fileToDataUrl } from '../lib/photoSt
 import { useCollection } from '../lib/useCollection.js'
 import { uploadImage } from '../lib/upload.js'
 import { useRider } from '../lib/RiderContext.jsx'
+import { useRoster } from '../lib/useRoster.js'
+import { useViewRider } from '../lib/ViewRiderContext.jsx'
+import PhotoViewer from './PhotoViewer.jsx'
 
 // Photos for one itinerary day.
 // Shared mode: uploaded to Supabase storage — the whole group sees them.
@@ -10,6 +13,8 @@ import { useRider } from '../lib/RiderContext.jsx'
 export default function PhotoStrip({ day }) {
   const { name, uid, remote } = useRider()
   const shared = useCollection('photos', { enabled: remote })
+  const roster = useRoster(remote)
+  const { openRider } = useViewRider()
   const [localPhotos, setLocalPhotos] = useState([])
   const [viewing, setViewing] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -21,7 +26,7 @@ export default function PhotoStrip({ day }) {
   }, [localKey, remote])
 
   const photos = remote
-    ? shared.items.filter(p => p.day === day).map(p => ({ id: p.id, src: p.url, mine: p.created_by === uid, by: p.by }))
+    ? shared.items.filter(p => p.day === day).map(p => ({ id: p.id, src: p.url, mine: p.created_by === uid, by: p.by, from: p.created_by, tags: p.tags }))
     : localPhotos.map(p => ({ id: p.id, src: p.dataUrl, mine: true }))
 
   const onFile = async (e) => {
@@ -90,18 +95,11 @@ export default function PhotoStrip({ day }) {
       />
 
       {viewing && (
-        <div
-          onClick={() => setViewing(null)}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 100,
-            background: 'rgba(0,0,0,0.92)',
-            display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center', gap: 10,
-          }}
-        >
-          <img src={viewing.src} alt="" style={{ maxWidth: '95%', maxHeight: '85%', borderRadius: 10 }} />
-          {viewing.by && <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>📷 {viewing.by}</div>}
-        </div>
+        <PhotoViewer
+          photo={viewing} roster={roster} meId={uid} openRider={openRider}
+          onSaveTags={remote ? (tags) => { shared.update(viewing.id, { tags }); setViewing(v => ({ ...v, tags })) } : null}
+          onClose={() => setViewing(null)}
+        />
       )}
     </div>
   )

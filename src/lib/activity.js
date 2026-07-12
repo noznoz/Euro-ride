@@ -2,10 +2,18 @@
 // shared data source. Each entry: { id, type, ts, who, text, target, from }.
 // `target` is the tab to open on tap ('news','money','trip','route','profile')
 // or 'inbox' (with `from` = the sender's uid).
-export function buildActivity({ rider, roster = [], announcements = [], expenses = [], reservations = [], completions = [], photos = [], messages = [] }) {
+export function buildActivity({ rider, roster = [], announcements = [], completions = [], photos = [], messages = [], pending = [] }) {
   const me = rider.uid
   const myName = rider.name
+  const iAmTagged = (tags) => Array.isArray(tags) && tags.some(t => t.id === me)
   const out = []
+
+  // Admin only: riders waiting for approval
+  if (rider.isAdmin) {
+    pending.forEach(p => {
+      out.push({ id: 'pend' + p.id, type: 'pending', ts: p.joinedTs || p.id, who: p.name, text: 'is waiting for approval', target: 'profile' })
+    })
+  }
 
   roster.forEach(r => {
     if (r.id === me || !r.joinedTs) return
@@ -13,24 +21,20 @@ export function buildActivity({ rider, roster = [], announcements = [], expenses
   })
   announcements.forEach(a => {
     if (a.by === myName) return
-    out.push({ id: 'a' + a.id, type: 'ann', ts: a.ts || a.id, who: a.by, text: a.text, target: 'news' })
-  })
-  expenses.forEach(e => {
-    if (e.created_by === me) return
-    const amt = e.amount != null ? ` (${e.currency || ''} ${e.amount})` : ''
-    out.push({ id: 'e' + e.id, type: 'expense', ts: e.id, who: e.by, text: `added an expense${amt}`, target: 'money' })
-  })
-  reservations.forEach(r => {
-    if (r.created_by === me) return
-    out.push({ id: 'r' + r.id, type: 'reservation', ts: r.id, who: r.by, text: `added a reservation: ${r.label || ''}`, target: 'trip' })
+    const tagged = iAmTagged(a.tags)
+    out.push({
+      id: 'a' + a.id, type: tagged ? 'tagpost' : 'ann', ts: a.ts || a.id,
+      who: a.by, text: a.text, target: 'news', from: a.created_by,
+    })
   })
   completions.forEach(c => {
     if (c.created_by === me) return
-    out.push({ id: 'c' + c.id, type: 'ride', ts: c.id, who: c.by, text: `completed a ride day (+${c.km || 0} km)`, target: 'route' })
+    out.push({ id: 'c' + c.id, type: 'ride', ts: c.id, who: c.by, text: `completed a ride day (+${c.km || 0} km)`, target: 'route', from: c.created_by })
   })
   photos.forEach(p => {
     if (p.created_by === me) return
-    out.push({ id: 'p' + p.id, type: 'photo', ts: p.id, who: p.by, text: 'added a photo 📷', target: 'route' })
+    const tagged = iAmTagged(p.tags)
+    out.push({ id: 'p' + p.id, type: tagged ? 'tagphoto' : 'photo', ts: p.id, who: p.by, text: 'a photo 📷', target: 'route', from: p.created_by })
   })
   messages.forEach(m => {
     if (m.to_id !== me || m.created_by === me) return
@@ -41,17 +45,18 @@ export function buildActivity({ rider, roster = [], announcements = [], expenses
 }
 
 export const NOTIF_ICON = {
-  join: '👋', ann: '📣', expense: '💶', reservation: '🎫', ride: '🏁', photo: '📷', msg: '✉️',
+  pending: '⏳', join: '👋', ann: '📣', ride: '🏁', photo: '📷', msg: '✉️', tagpost: '🏷️', tagphoto: '🏷️',
 }
 
 export function notifTitle(n) {
   switch (n.type) {
+    case 'pending': return `${n.who} ${n.text}`
     case 'join': return `${n.who} joined`
     case 'ann': return `${n.who} posted an announcement`
-    case 'expense': return `${n.who} ${n.text}`
-    case 'reservation': return `${n.who} ${n.text}`
     case 'ride': return `${n.who} ${n.text}`
     case 'photo': return `${n.who} added a photo`
+    case 'tagpost': return `${n.who} tagged you in a post`
+    case 'tagphoto': return `${n.who} tagged you in a photo`
     case 'msg': return `Message from ${n.who}`
     default: return n.who || 'Activity'
   }

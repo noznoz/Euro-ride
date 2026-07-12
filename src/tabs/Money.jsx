@@ -6,7 +6,7 @@ import { useTripSettings } from '../lib/useRoster.js'
 import { effectiveFx } from '../lib/tripConfig.js'
 import { useRider } from '../lib/RiderContext.jsx'
 
-const CURRENCIES = ['EUR', 'CHF', 'SAR']
+const CURRENCIES = ['EUR', 'SAR']
 const SYMBOL = { EUR: '€', CHF: 'CHF ', SAR: 'SAR ' }
 
 const fmt = (amount, cur) => `${SYMBOL[cur] || cur + ' '}${amount.toFixed(2)}`
@@ -77,7 +77,7 @@ export default function Money() {
           </div>
         )}
         <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 10 }}>
-          Rates: €1 = SAR {fx.EUR.toFixed(2)} · CHF 1 = SAR {fx.CHF.toFixed(2)}
+          Rate: €1 = SAR {fx.EUR.toFixed(2)}
         </div>
       </div>
 

@@ -13,13 +13,16 @@ import Money from './tabs/Money.jsx'
 import Info from './tabs/Info.jsx'
 import Inbox from './components/Inbox.jsx'
 import NotificationCenter from './components/NotificationCenter.jsx'
+import RiderProfileOverlay from './components/RiderProfileOverlay.jsx'
 import { AuthProvider, useAuth } from './lib/AuthContext.jsx'
 import { ProfileProvider, useProfile } from './lib/ProfileContext.jsx'
 import { RiderContext } from './lib/RiderContext.jsx'
+import { ViewRiderContext } from './lib/ViewRiderContext.jsx'
 import { useLocalStorage } from './lib/useLocalStorage.js'
 import { useMessages } from './lib/useMessages.js'
 import { useCollection } from './lib/useCollection.js'
 import { useRoster } from './lib/useRoster.js'
+import { usePending } from './lib/usePending.js'
 import { buildActivity } from './lib/activity.js'
 
 const SCREENS = { trip: Trip, route: Route, profile: Profile, news: News, packing: Packing, money: Money, info: Info }
@@ -29,24 +32,24 @@ function Tabs({ rider, chipLabel, onChipTap }) {
   const Screen = SCREENS[tab]
   const mainRef = useRef(null)
 
-  // Inbox + notifications — all shared activity feeds the bell
+  // Inbox + notifications — shared activity feeds the bell
   const remote = rider.remote
   const roster = useRoster(remote)
   const msgs = useMessages(remote)
   const ann = useCollection('announcements', { enabled: remote, orderBy: 'id', ascending: false })
-  const expenses = useCollection('expenses', { enabled: remote })
-  const reservations = useCollection('reservations', { enabled: remote })
   const completions = useCollection('completions', { enabled: remote })
   const photos = useCollection('photos', { enabled: remote })
+  const pend = usePending(remote && rider.isAdmin)
   const [lastRead, setLastRead] = useLocalStorage(`euroride.${rider.name}.inboxRead`, 0)
   const [lastSeen, setLastSeen] = useLocalStorage(`euroride.${rider.name}.notifSeen`, 0)
   const [overlay, setOverlay] = useState(null)        // 'inbox' | 'notif' | null
   const [inboxPartner, setInboxPartner] = useState(null)
+  const [viewRiderId, setViewRiderId] = useState(null)
 
   const activity = remote ? buildActivity({
     rider, roster,
-    announcements: ann.items, expenses: expenses.items, reservations: reservations.items,
-    completions: completions.items, photos: photos.items, messages: msgs.items,
+    announcements: ann.items, completions: completions.items, photos: photos.items,
+    messages: msgs.items, pending: pend.pending,
   }) : []
 
   const unreadMsgs = remote
@@ -57,6 +60,8 @@ function Tabs({ rider, chipLabel, onChipTap }) {
   const openInbox = (partner = null) => { setInboxPartner(partner); setOverlay('inbox'); setLastRead(Date.now()) }
   const openNotif = () => { setOverlay('notif'); setLastSeen(Date.now()) }
   const navigateTo = (tabId) => { setOverlay(null); setTab(tabId) }
+  const openRider = (id) => { if (id) setViewRiderId(id) }
+  const viewedRider = viewRiderId ? roster.find(r => r.id === viewRiderId) : null
 
   // Pull down from the top to reload the app (fresh data + latest version).
   const onRefresh = useCallback(async () => {
@@ -70,6 +75,7 @@ function Tabs({ rider, chipLabel, onChipTap }) {
 
   return (
     <RiderContext.Provider value={rider}>
+     <ViewRiderContext.Provider value={{ openRider }}>
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
         <header style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -107,6 +113,11 @@ function Tabs({ rider, chipLabel, onChipTap }) {
             onOpenThread={(partner) => openInbox(partner)}
             onClose={() => setOverlay(null)} />
         )}
+        {viewedRider && (
+          <RiderProfileOverlay rider={viewedRider}
+            onMessage={(id) => { setViewRiderId(null); openInbox(id) }}
+            onClose={() => setViewRiderId(null)} />
+        )}
 
         <main ref={mainRef} style={{
           flex: 1,
@@ -140,6 +151,7 @@ function Tabs({ rider, chipLabel, onChipTap }) {
         </main>
         <BottomNav active={tab} onChange={setTab} />
       </div>
+     </ViewRiderContext.Provider>
     </RiderContext.Provider>
   )
 }
@@ -186,11 +198,11 @@ function LocalShell() {
 
 // Shared mode — signed in to the chapter's Supabase backend.
 function RemoteShell() {
-  const { profile, user, signOut } = useAuth()
+  const { profile, user, signOut, isAdmin } = useAuth()
   const name = profile?.name || 'Rider'
   return (
     <Tabs
-      rider={{ name, uid: user.id, remote: true }}
+      rider={{ name, uid: user.id, remote: true, isAdmin }}
       chipLabel={name}
       onChipTap={() => { if (confirm('Sign out?')) signOut() }}
     />
