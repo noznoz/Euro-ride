@@ -209,6 +209,24 @@ export const dayLocations = {
 }
 
 // ------------------------------------------------------------
+//  Country flag(s) each day passes through, in travel order.
+// ------------------------------------------------------------
+export const dayCountries = {
+  1:  ['🇩🇪'],              // Munich (arrival)
+  2:  ['🇩🇪'],              // Munich
+  3:  ['🇩🇪', '🇦🇹'],       // Munich → Bregenz
+  4:  ['🇦🇹', '🇨🇭'],       // Bregenz → Andermatt
+  5:  ['🇨🇭'],              // Andermatt → Montreux
+  6:  ['🇨🇭'],              // Montreux (rest)
+  7:  ['🇨🇭'],              // Montreux → Täsch
+  8:  ['🇨🇭', '🇮🇹'],       // Täsch → Como
+  9:  ['🇮🇹'],              // Como → Livigno
+  10: ['🇮🇹', '🇨🇭', '🇦🇹'], // Livigno → Achensee
+  11: ['🇦🇹', '🇩🇪'],       // Achensee → Munich
+  12: ['🇩🇪'],              // Munich → home
+}
+
+// ------------------------------------------------------------
 //  COUNTRY INFO — riding rules for every country on the route.
 // ------------------------------------------------------------
 export const countries = [

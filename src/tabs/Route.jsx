@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { itinerary } from '../data/trip.js'
+import { itinerary, dayCountries } from '../data/trip.js'
 import { useLocalStorage } from '../lib/useLocalStorage.js'
 import { useCollection } from '../lib/useCollection.js'
 import { useRider } from '../lib/RiderContext.jsx'
@@ -122,8 +122,11 @@ export default function Route() {
                 <div style={{ fontSize: 14, fontWeight: 700 }}>
                   {d.title} {today && <span style={{ color: 'var(--green)', fontSize: 11 }}>• TODAY</span>}
                 </div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                  {fmtDate(d.date)}{isRide ? ` · ${d.km} km · ${d.rideTime}` : ''}
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>{fmtDate(d.date)}{isRide ? ` · ${d.km} km · ${d.rideTime}` : ''}</span>
+                  {dayCountries[d.day] && (
+                    <span style={{ fontSize: 13 }}>{dayCountries[d.day].join(' ')}</span>
+                  )}
                 </div>
               </div>
               <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{expanded ? '▲' : '▼'}</span>
