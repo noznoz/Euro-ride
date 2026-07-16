@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { itinerary, dayCountries } from '../data/trip.js'
 import { useLocalStorage } from '../lib/useLocalStorage.js'
 import { useCollection } from '../lib/useCollection.js'
+import { useTripSettings } from '../lib/useRoster.js'
 import { useRider } from '../lib/RiderContext.jsx'
+import { useAuth } from '../lib/AuthContext.jsx'
 import PhotoStrip from '../components/PhotoStrip.jsx'
 import DayWeather from '../components/DayWeather.jsx'
 import Album from '../components/Album.jsx'
@@ -29,10 +31,22 @@ function isToday(iso) {
 }
 
 export default function Route() {
-  const { name, uid, remote } = useRider()
+  const { name, uid, remote, isAdmin } = useRider()
+  const { updateProfile } = useAuth()
+  const settings = useTripSettings(remote)
   const [localCompleted, setLocalCompleted] = useLocalStorage(`euroride.${name}.completed.v1`, [])
   const shared = useCollection('completions', { enabled: remote })
   const [showAlbum, setShowAlbum] = useState(false)
+
+  const hotelOf = (d) => settings?.dayHotels?.[d.day] || d.hotel
+  const saveHotel = async (day, value) => {
+    await updateProfile({
+      tripSettings: {
+        ...(settings || {}),
+        dayHotels: { ...(settings?.dayHotels || {}), [day]: value },
+      },
+    })
+  }
   const [open, setOpen] = useState(() => {
     const today = itinerary.find(d => isToday(d.date))
     return today ? today.day : itinerary[0].day
@@ -155,7 +169,7 @@ export default function Route() {
                   ))}
                 </ul>
 
-                <div style={{ fontSize: 13 }}>🛏️ <span style={{ color: 'var(--text-muted)' }}>{d.hotel}</span></div>
+                <DayHotel value={hotelOf(d)} canEdit={remote && isAdmin} onSave={(v) => saveHotel(d.day, v)} />
 
                 <DayWeather day={d.day} date={d.date} />
 
@@ -208,6 +222,42 @@ export default function Route() {
           </div>
         )
       })}
+    </div>
+  )
+}
+
+// Hotel line for a day. Admins can tap ✎ to edit it for the whole group.
+function DayHotel({ value, canEdit, onSave }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(value || '')
+  const [busy, setBusy] = useState(false)
+
+  const start = () => { setDraft(value || ''); setEditing(true) }
+  const commit = async () => { setBusy(true); await onSave(draft.trim()); setBusy(false); setEditing(false) }
+
+  if (editing) {
+    return (
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <span style={{ fontSize: 13 }}>🛏️</span>
+        <input autoFocus className="field" style={{ flex: 1, padding: '7px 10px', fontSize: 13 }}
+          placeholder="Hotel for this night"
+          value={draft} onChange={e => setDraft(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && commit()} />
+        <button onClick={() => setEditing(false)} style={{ fontSize: 12, color: 'var(--text-muted)' }}>Cancel</button>
+        <button onClick={commit} disabled={busy} style={{
+          fontSize: 13, fontWeight: 700, color: '#0a0a0a', background: 'var(--accent)',
+          borderRadius: 8, padding: '6px 12px',
+        }}>{busy ? '…' : 'Save'}</button>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+      🛏️ <span style={{ color: 'var(--text-muted)', flex: 1 }}>{value}</span>
+      {canEdit && (
+        <button onClick={start} style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700 }}>✎ Edit</button>
+      )}
     </div>
   )
 }
