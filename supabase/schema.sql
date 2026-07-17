@@ -72,6 +72,13 @@ create table if not exists public.messages (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.journal (
+  id numeric primary key,
+  data jsonb not null default '{}'::jsonb,
+  created_by uuid references public.profiles(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
 -- ---------------------------------------------------------------------
 -- INVITE CODES — anyone who signs up with a valid active code is
 -- auto-approved (skips the admin queue).
@@ -172,6 +179,7 @@ alter table public.reservations enable row level security;
 alter table public.completions  enable row level security;
 alter table public.photos       enable row level security;
 alter table public.announcements enable row level security;
+alter table public.journal      enable row level security;
 alter table public.invite_codes enable row level security;
 
 -- PROFILES: any authenticated user can read the roster; you can edit your
@@ -193,7 +201,7 @@ create policy profiles_update_admin on public.profiles
 do $$
 declare t text;
 begin
-  foreach t in array array['expenses','reservations','completions','photos','announcements'] loop
+  foreach t in array array['expenses','reservations','completions','photos','announcements','journal'] loop
     execute format('drop policy if exists %1$s_select on public.%1$s', t);
     execute format('create policy %1$s_select on public.%1$s
       for select to authenticated using (public.is_approved())', t);
@@ -233,6 +241,7 @@ alter publication supabase_realtime add table public.reservations;
 alter publication supabase_realtime add table public.completions;
 alter publication supabase_realtime add table public.photos;
 alter publication supabase_realtime add table public.announcements;
+alter publication supabase_realtime add table public.journal;
 
 -- ---------------------------------------------------------------------
 -- STORAGE: public 'media' bucket for trip photos

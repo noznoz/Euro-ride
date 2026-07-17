@@ -7,6 +7,7 @@ import { useRider } from '../lib/RiderContext.jsx'
 import { useAuth } from '../lib/AuthContext.jsx'
 import PhotoStrip from '../components/PhotoStrip.jsx'
 import DayWeather from '../components/DayWeather.jsx'
+import DayJournal from '../components/DayJournal.jsx'
 import Album from '../components/Album.jsx'
 
 // Directions link through every stop of the day, in order.
@@ -182,6 +183,9 @@ export default function Route() {
 
                 {/* Photos of the day — shared with the group when signed in */}
                 <PhotoStrip day={d.day} />
+
+                {/* Daily journal — the trip's travel story */}
+                <DayJournal day={d.day} />
 
                 {others.length > 0 && (
                   <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
