@@ -9,8 +9,11 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.js',
       registerType: 'autoUpdate',
-      workbox: {
+      injectManifest: {
         globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
       },
       manifest: {

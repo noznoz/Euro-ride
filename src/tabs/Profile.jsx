@@ -7,6 +7,7 @@ import { useLocalStorage } from '../lib/useLocalStorage.js'
 import { uploadImage } from '../lib/upload.js'
 import { fileToDataUrl } from '../lib/photoStore.js'
 import Documents from '../components/Documents.jsx'
+import PushToggle from '../components/PushToggle.jsx'
 
 const EMOJIS = ['🏍️', '😎', '🔥', '🦅', '🤘', '🧔', '👑', '⚡', '🌟', '🐺']
 
@@ -43,6 +44,8 @@ export default function Profile() {
       {remote && isAdmin && <PendingApprovals />}
 
       <MyProfileCard me={me} save={save} remote={remote} />
+
+      <PushToggle />
 
       <Documents />
 

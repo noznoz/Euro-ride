@@ -283,3 +283,18 @@ create policy messages_delete on public.messages
 do $$ begin
   alter publication supabase_realtime add table public.messages;
 exception when duplicate_object then null; end $$;
+
+-- ---------------------------------------------------------------------
+-- PUSH SUBSCRIPTIONS (one row per device) — edge function reads via service role
+-- ---------------------------------------------------------------------
+create table if not exists public.push_subscriptions (
+  endpoint text primary key,
+  rider_id uuid references public.profiles(id) on delete cascade,
+  rider_name text,
+  subscription jsonb not null,
+  created_at timestamptz not null default now()
+);
+alter table public.push_subscriptions enable row level security;
+drop policy if exists push_rw on public.push_subscriptions;
+create policy push_rw on public.push_subscriptions
+  for all to authenticated using (rider_id = auth.uid()) with check (rider_id = auth.uid());

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './supabase.js'
+import { notifyRiders } from './push.js'
 
 // Direct messages involving the current rider. RLS returns only messages
 // I sent or received, so a plain select is safe. Kept live via Realtime.
@@ -34,6 +35,7 @@ export function useMessages(enabled = true) {
     const row = { id, to_id: toId, data: { fromName, toName, text, ts: id } }
     setItems(prev => [...prev, { id, to_id: toId, created_by: me, fromName, toName, text, ts: id }])
     await supabase.from('messages').insert(row)
+    notifyRiders([toId], { title: `Message from ${fromName}`, body: text })
   }, [])
 
   const remove = useCallback(async (id) => {

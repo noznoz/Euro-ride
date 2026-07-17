@@ -4,6 +4,7 @@ import { useLocalStorage } from '../lib/useLocalStorage.js'
 import { useRider } from '../lib/RiderContext.jsx'
 import { useRoster } from '../lib/useRoster.js'
 import { useViewRider } from '../lib/ViewRiderContext.jsx'
+import { notifyRiders } from '../lib/push.js'
 import RiderPicker from '../components/RiderPicker.jsx'
 
 function ago(ts) {
@@ -31,8 +32,16 @@ export default function News() {
     const t = text.trim()
     if (!t) return
     const item = { id: Date.now(), text: t, by: name, ts: Date.now(), tags }
-    if (remote) shared.upsert(item)
-    else setLocalItems(l => [item, ...l])
+    if (remote) {
+      shared.upsert(item)
+      // Push: everyone gets the announcement; tagged riders get a personal ping
+      const others = roster.filter(r => r.id !== uid).map(r => r.id)
+      notifyRiders(others, { title: `📣 ${name} posted`, body: t })
+      const taggedIds = tags.map(t => t.id).filter(id => id !== uid)
+      if (taggedIds.length) notifyRiders(taggedIds, { title: `🏷️ ${name} tagged you`, body: t })
+    } else {
+      setLocalItems(l => [item, ...l])
+    }
     setText(''); setTags([])
   }
   const remove = (id) => {
