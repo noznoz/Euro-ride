@@ -3,7 +3,7 @@ import { useRider } from '../lib/RiderContext.jsx'
 import { pushSupported, pushStatus, enablePush, disablePush } from '../lib/push.js'
 
 export default function PushToggle() {
-  const { uid, name, remote } = useRider()
+  const { uid, name, remote, isAdmin } = useRider()
   const [status, setStatus] = useState('off')
   const [busy, setBusy] = useState(false)
 
@@ -24,7 +24,7 @@ export default function PushToggle() {
 
   const on = status === 'on'
   return (
-    <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+    <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
       <span style={{ fontSize: 22 }}>🔔</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 14, fontWeight: 700 }}>Push notifications</div>
@@ -41,6 +41,16 @@ export default function PushToggle() {
         border: on ? '1px solid var(--border)' : 'none',
         opacity: busy ? 0.6 : 1,
       }}>{busy ? '…' : on ? 'Turn off' : 'Enable'}</button>
+      {isAdmin && (
+        <div style={{
+          flexBasis: '100%', fontSize: 11, color: 'var(--gold)',
+          background: 'rgba(255,201,60,0.08)', border: '1px solid rgba(255,201,60,0.25)',
+          borderRadius: 8, padding: '8px 10px', marginTop: 4, lineHeight: 1.5,
+        }}>
+          ⚙️ Admin setup pending: deploy the <strong>notify</strong> edge function in Supabase so alerts
+          actually send to phones. Until then the toggle subscribes but no pings go out.
+        </div>
+      )}
     </div>
   )
 }
