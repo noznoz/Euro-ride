@@ -9,6 +9,7 @@ import { effectiveTrip } from '../lib/tripConfig.js'
 import { uploadImage } from '../lib/upload.js'
 import { fileToDataUrl } from '../lib/photoStore.js'
 import TripSettingsEditor from '../components/TripSettingsEditor.jsx'
+import TripBook from '../components/TripBook.jsx'
 import tripLogo from '../assets/trip-logo.png'
 import chapterLogo from '../assets/chapter-logo.png'
 
@@ -32,6 +33,7 @@ export default function Trip() {
   const roster = useRoster(remote)
   const settings = useTripSettings(remote)
   const [editing, setEditing] = useState(false)
+  const [showBook, setShowBook] = useState(false)
 
   const T = effectiveTrip(settings)
 
@@ -58,6 +60,7 @@ export default function Trip() {
   return (
     <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
       {editing && <TripSettingsEditor current={T} onClose={() => setEditing(false)} />}
+      {showBook && <TripBook onClose={() => setShowBook(false)} />}
 
       {/* Hero */}
       <div style={{
@@ -118,6 +121,12 @@ export default function Trip() {
           </div>
         ))}
       </div>
+
+      {/* Travel book */}
+      <button onClick={() => setShowBook(true)} style={{
+        padding: 12, borderRadius: 12, background: 'linear-gradient(135deg, #b8860b, #F2B21E)',
+        color: '#0a0a0a', fontWeight: 800, fontSize: 15,
+      }}>📖 Create trip book</button>
 
       {/* Flights — each rider can set their own */}
       <MyFlights groupFlights={T.flights} />
