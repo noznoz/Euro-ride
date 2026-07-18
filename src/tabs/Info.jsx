@@ -1,9 +1,12 @@
 import { trip, countries } from '../data/trip.js'
+import CrewLocation from '../components/CrewLocation.jsx'
 
 export default function Info() {
   return (
     <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
       <h1 style={{ fontSize: 20 }}>🛂 Riding info</h1>
+
+      <CrewLocation />
 
       {/* Emergency */}
       <div className="card" style={{ borderColor: 'rgba(255,80,80,0.4)' }}>
