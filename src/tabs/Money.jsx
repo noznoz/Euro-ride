@@ -5,6 +5,8 @@ import { useCollection } from '../lib/useCollection.js'
 import { useTripSettings } from '../lib/useRoster.js'
 import { effectiveFx } from '../lib/tripConfig.js'
 import { useRider } from '../lib/RiderContext.jsx'
+import SettleUp from '../components/SettleUp.jsx'
+import FuelLog from '../components/FuelLog.jsx'
 
 const CURRENCIES = ['EUR', 'SAR']
 const SYMBOL = { EUR: '€', CHF: 'CHF ', SAR: 'SAR ' }
@@ -141,6 +143,9 @@ export default function Money() {
           color: '#0a0a0a', fontWeight: 700, fontSize: 15,
         }}>+ Add expense</button>
       )}
+
+      <SettleUp expenses={expenses} fx={fx} />
+      <FuelLog fx={fx} />
 
       {/* List — in shared mode you see the whole group's spending */}
       {expenses.map(e => {

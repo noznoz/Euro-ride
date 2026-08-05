@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { itinerary, dayCountries } from '../data/trip.js'
+import { itinerary, dayCountries, dayLocations } from '../data/trip.js'
 import { useLocalStorage } from '../lib/useLocalStorage.js'
 import { useCollection } from '../lib/useCollection.js'
 import { useTripSettings } from '../lib/useRoster.js'
@@ -172,6 +172,8 @@ export default function Route() {
 
                 <DayHotel value={hotelOf(d)} canEdit={remote && isAdmin} onSave={(v) => saveHotel(d.day, v)} />
 
+                <NearbyStops day={d.day} />
+
                 <DayWeather day={d.day} date={d.date} />
 
                 {d.notes && (
@@ -226,6 +228,32 @@ export default function Route() {
           </div>
         )
       })}
+    </div>
+  )
+}
+
+// Quick "what's nearby" searches for the day's destination town.
+function NearbyStops({ day }) {
+  const loc = dayLocations[day]
+  if (!loc) return null
+  const search = (q) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${q} near ${loc.name}`)}`
+  const items = [
+    ['☕ Coffee', 'specialty coffee'],
+    ['🍽️ Food', 'restaurant'],
+    ['⛽ Fuel', 'petrol station'],
+    ['📷 Views', 'viewpoint'],
+  ]
+  return (
+    <div>
+      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>Nearby in {loc.name}</div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {items.map(([label, q]) => (
+          <a key={label} href={search(q)} target="_blank" rel="noreferrer" style={{
+            fontSize: 12, background: 'var(--surface)', border: '1px solid var(--border)',
+            borderRadius: 16, padding: '5px 10px',
+          }}>{label}</a>
+        ))}
+      </div>
     </div>
   )
 }
