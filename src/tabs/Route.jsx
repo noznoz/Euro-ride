@@ -3,6 +3,7 @@ import { itinerary, dayCountries, dayLocations } from '../data/trip.js'
 import { useLocalStorage } from '../lib/useLocalStorage.js'
 import { useCollection } from '../lib/useCollection.js'
 import { useTripSettings } from '../lib/useRoster.js'
+import { effectiveTrip } from '../lib/tripConfig.js'
 import { useRider } from '../lib/RiderContext.jsx'
 import { useAuth } from '../lib/AuthContext.jsx'
 import PhotoStrip from '../components/PhotoStrip.jsx'
@@ -48,6 +49,29 @@ export default function Route() {
       },
     })
   }
+
+  // Share the whole itinerary as text (e.g. with family following along).
+  const shareItinerary = async () => {
+    const T = effectiveTrip(settings)
+    const fmt = (iso) => new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+    let text = `🏍️ ${T.name} — ${T.subName}\n${fmt(T.startDate)} – ${fmt(T.endDate)}\n\n`
+    itinerary.forEach(d => {
+      const flags = (dayCountries[d.day] || []).join('')
+      text += `Day ${d.day} · ${fmtDate(d.date)} ${flags}\n${d.title}\n`
+      if (d.type === 'ride') text += `${d.route.join(' → ')} · ${d.km} km\n`
+      text += `🛏️ ${hotelOf(d)}\n\n`
+    })
+    text += `Follow the ride: https://noznoz.github.io/Euro-ride/`
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: `${T.name} — itinerary`, text })
+      } else {
+        await navigator.clipboard.writeText(text)
+        alert('Itinerary copied — paste it into a message 📋')
+      }
+    } catch { /* user cancelled the share sheet */ }
+  }
+
   const [open, setOpen] = useState(() => {
     const today = itinerary.find(d => isToday(d.date))
     return today ? today.day : itinerary[0].day
@@ -82,10 +106,16 @@ export default function Route() {
       {showAlbum && <Album onClose={() => setShowAlbum(false)} />}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 style={{ fontSize: 20 }}>🗺️ Itinerary</h1>
-        <button onClick={() => setShowAlbum(true)} style={{
-          background: 'var(--surface)', border: '1px solid var(--accent)', color: 'var(--accent)',
-          fontWeight: 700, fontSize: 13, borderRadius: 20, padding: '6px 12px',
-        }}>📸 Trip album</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={shareItinerary} style={{
+            background: 'var(--surface)', border: '1px solid var(--accent)', color: 'var(--accent)',
+            fontWeight: 700, fontSize: 13, borderRadius: 20, padding: '6px 12px',
+          }}>📤 Share</button>
+          <button onClick={() => setShowAlbum(true)} style={{
+            background: 'var(--surface)', border: '1px solid var(--accent)', color: 'var(--accent)',
+            fontWeight: 700, fontSize: 13, borderRadius: 20, padding: '6px 12px',
+          }}>📸 Trip album</button>
+        </div>
       </div>
 
       {/* Ride progress */}
